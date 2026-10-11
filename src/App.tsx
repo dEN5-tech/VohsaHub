@@ -35,6 +35,7 @@ export function App() {
     activeFileName,
     compilationResult,
     isLoadedFromUrl,
+    isSecureTask,
     setActiveFileName,
     triggerCompile,
     handleFileChange,
@@ -43,6 +44,13 @@ export function App() {
     handleRenameFile,
     handleReset: resetFiles,
   } = useFileManager({ autoCompile });
+
+  // Если в ссылке передан флаг is_s (или в payload is_s: true),
+  // скрываем task.json из проводника и табов редактора, чтобы студент не мог подсмотреть тесты/ответы
+  const visibleFiles = useMemo(() => {
+    if (!isSecureTask) return files;
+    return files.filter((f) => !isVfsTaskFile(f.name));
+  }, [files, isSecureTask]);
 
   // 1.1 Динамическое извлечение SoloLearn задач из файлов виртуальной файловой системы (task.json / tasks.json)
   const vfsTasksData = useMemo(() => {
@@ -228,14 +236,14 @@ export function App() {
         {activeSidebarTab === 'explorer' && (
           <>
             <Explorer
-              files={files}
+              files={visibleFiles}
               activeFileName={activeFileName}
               width={explorerWidth}
               onSelectFile={setActiveFileName}
               onCreateFile={handleCreateFile}
               onDeleteFile={handleDeleteFile}
               onRenameFile={handleRenameFile}
-              onCreateTaskFile={handleCreateTaskFile}
+              onCreateTaskFile={isSecureTask ? undefined : handleCreateTaskFile}
             />
             <div
               class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}
@@ -260,12 +268,12 @@ export function App() {
               onAddTask={handleAddTask}
               onValidateTask={handleValidateTask}
               lastValidationResult={lastValidationResult}
-              vfsTaskFileName={vfsTasksData?.sourceFileName}
+              vfsTaskFileName={isSecureTask ? undefined : vfsTasksData?.sourceFileName}
               vfsTaskError={vfsTasksData?.parseError}
-              onOpenTaskFile={(name) => {
+              onOpenTaskFile={isSecureTask ? undefined : (name) => {
                 setActiveFileName(name);
               }}
-              onCreateTaskFile={handleCreateTaskFile}
+              onCreateTaskFile={isSecureTask ? undefined : handleCreateTaskFile}
             />
             <div
               class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}
@@ -284,7 +292,7 @@ export function App() {
             style={{ width: `${splitPercent}%`, flex: 'none' }}
           >
             <EditorPane
-              files={files}
+              files={visibleFiles}
               activeFileName={activeFileName}
               onSelectFile={setActiveFileName}
               onFileChange={handleFileChange}

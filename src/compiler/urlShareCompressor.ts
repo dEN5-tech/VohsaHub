@@ -5,6 +5,7 @@ export interface ProjectSharePayload {
   v: 1;
   files: Array<{ n: string; c: string }>;
   title?: string;
+  is_s?: boolean; // Флаг секретного задания: task.json скрывается от студента в проводнике/редакторе
 }
 
 export interface ShareUrlStats {
@@ -51,17 +52,19 @@ function urlSafeBase64ToUint8Array(base64Str: string): Uint8Array {
 
 /**
  * Упаковывает и сжимает проект через fflate (Deflate с максимальным сжатием level 9)
- * в компактную ссылку для шаринга в URL хэш `#project=...`
+ * в компактную ссылку для шаринга в URL хэш `#project=...&is_s=1`
  */
 export function compressProjectToUrl(
   files: VirtualFile[],
   baseUrl: string = window.location.origin + window.location.pathname,
-  title?: string
+  title?: string,
+  isSecureTask?: boolean
 ): ShareUrlStats {
   const payload: ProjectSharePayload = {
     v: 1,
     files: files.map((f) => ({ n: f.name, c: f.content })),
     title,
+    is_s: isSecureTask ? true : undefined,
   };
 
   const jsonStr = JSON.stringify(payload);
@@ -72,7 +75,8 @@ export function compressProjectToUrl(
   const base64Hash = uint8ArrayToUrlSafeBase64(compressedBytes);
 
   const cleanBaseUrl = baseUrl.split('#')[0];
-  const fullUrl = `${cleanBaseUrl}#project=${base64Hash}`;
+  const secureParam = isSecureTask ? '&is_s=1' : '';
+  const fullUrl = `${cleanBaseUrl}#project=${base64Hash}${secureParam}`;
 
   const totalLines = files.reduce((acc, f) => acc + (f.content ? f.content.split('\n').length : 0), 0);
   const totalChars = files.reduce((acc, f) => acc + (f.content ? f.content.length : 0), 0);
@@ -97,13 +101,18 @@ export function compressProjectToUrl(
 export function decompressProjectFromUrl(hash: string = window.location.hash): {
   files: VirtualFile[];
   title?: string;
+  isSecureTask?: boolean;
 } | null {
   if (!hash) return null;
 
-  // Ищем параметр project= в хеше или query
+  // Ищем параметр project= и is_s= в хеше или query
   const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash;
   const params = new URLSearchParams(cleanHash);
   const encodedData = params.get('project');
+
+  // Проверяем наличие параметра is_s в URL (например #project=...&is_s=1 или ?is_s=1)
+  const is_s_query = params.get('is_s');
+  const isSecureFromUrl = is_s_query === '1' || is_s_query === 'true' || cleanHash.includes('is_s');
 
   if (!encodedData) return null;
 
@@ -121,6 +130,7 @@ export function decompressProjectFromUrl(hash: string = window.location.hash): {
       return {
         files,
         title: payload.title,
+        isSecureTask: isSecureFromUrl || Boolean(payload.is_s),
       };
     }
   } catch (err) {

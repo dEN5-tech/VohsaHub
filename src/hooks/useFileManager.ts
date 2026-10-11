@@ -12,6 +12,7 @@ export interface UseFileManagerReturn {
   activeFileName: string;
   compilationResult: CompilationResult;
   isLoadedFromUrl: boolean;
+  isSecureTask: boolean;
   setActiveFileName: (name: string) => void;
   triggerCompile: (currentFiles?: VirtualFile[]) => void;
   handleFileChange: (fileName: string, content: string) => void;
@@ -32,6 +33,10 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
   const [isLoadedFromUrl, setIsLoadedFromUrl] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return Boolean(initialSharedProject) || window.location.hash.includes('project=') || window.location.href.includes('boost');
+  });
+  const [isSecureTask, setIsSecureTask] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return Boolean(initialSharedProject?.isSecureTask);
   });
 
   const filesRef = useRef<VirtualFile[]>(files);
@@ -60,9 +65,14 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
       const shared = decompressProjectFromUrl();
       if (shared && shared.files.length > 0) {
         setIsLoadedFromUrl(true);
+        setIsSecureTask(Boolean(shared.isSecureTask));
         filesRef.current = shared.files;
         setFiles(shared.files);
-        setActiveFileName(shared.files[0]?.name || 'index.html');
+        // Выбираем первый открываемый файл, не являющийся скрытым заданием
+        const firstVisible = shared.isSecureTask
+          ? shared.files.find((f) => !f.name.toLowerCase().includes('task') && !f.name.toLowerCase().includes('sololearn'))
+          : shared.files[0];
+        setActiveFileName(firstVisible?.name || shared.files[0]?.name || '');
         triggerCompile(shared.files);
       }
     };
@@ -132,11 +142,11 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
 
   const handleReset = useCallback(() => {
     setIsLoadedFromUrl(false);
-    const defaultFiles = INITIAL_FILES.map((f) => ({ ...f }));
-    filesRef.current = defaultFiles;
-    setFiles(defaultFiles);
-    setActiveFileName(defaultFiles[0]?.name || 'index.html');
-    triggerCompile(defaultFiles);
+    setIsSecureTask(false);
+    filesRef.current = [];
+    setFiles([]);
+    setActiveFileName('');
+    triggerCompile([]);
   }, [triggerCompile]);
 
   return {
@@ -144,6 +154,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
     activeFileName,
     compilationResult,
     isLoadedFromUrl,
+    isSecureTask,
     setActiveFileName,
     triggerCompile,
     handleFileChange,

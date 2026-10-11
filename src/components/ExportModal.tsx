@@ -21,10 +21,12 @@ export function ExportModal({
   const [activeTab, setActiveTab] = useState<'share' | 'html' | 'iframe' | 'json'>('share');
   const [copied, setCopied] = useState(false);
 
-  // Сжатие проекта в URL через fflate
+  const [isSecureShare, setIsSecureShare] = useState(false);
+
+  // Сжатие проекта в URL через fflate (с учетом флага скрытия task.json)
   const shareStats: ShareUrlStats = useMemo(() => {
-    return compressProjectToUrl(files, window.location.href, snippetTitle);
-  }, [files, snippetTitle]);
+    return compressProjectToUrl(files, window.location.href, snippetTitle, isSecureShare);
+  }, [files, snippetTitle, isSecureShare]);
 
   const standaloneHtml = useMemo(() => {
     return buildProductionStandaloneHtml(files, snippetTitle);
@@ -133,6 +135,34 @@ export function ExportModal({
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                   <span>{copied ? 'Скопировано' : 'Копировать'}</span>
                 </button>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(39, 39, 42, 0.4)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(63, 63, 70, 0.5)',
+                  fontSize: '0.8rem',
+                  color: '#d4d4d8',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setIsSecureShare((v) => !v)}
+              >
+                <input
+                  type="checkbox"
+                  id="secure-task-check"
+                  checked={isSecureShare}
+                  onChange={(e) => setIsSecureShare((e.target as HTMLInputElement).checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ accentColor: '#14b8a6', cursor: 'pointer' }}
+                />
+                <label for="secure-task-check" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  🔒 <strong>Скрыть файл задания (&is_s=1):</strong> студент не увидит <code>task.json</code> в проводнике/редакторе и не сможет подсмотреть автотесты
+                </label>
               </div>
 
               {/* Метрики и расчет вместимости по формуле сжатия */}
