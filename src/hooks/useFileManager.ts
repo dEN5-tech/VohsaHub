@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { INITIAL_FILES } from '../data/snippets';
 import { compileSandboxBundle, type CompilationResult, type VirtualFile } from '../compiler/templateEngine';
-import { decompressProjectFromUrl } from '../compiler/urlShareCompressor';
+import { decompressProjectFromUrl, decompressProjectFromUrlAsync } from '../compiler/urlShareCompressor';
 
 export interface UseFileManagerOptions {
   autoCompile: boolean;
@@ -32,7 +32,12 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
   const [compilationResult, setCompilationResult] = useState<CompilationResult>({ success: true });
   const [isLoadedFromUrl, setIsLoadedFromUrl] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return Boolean(initialSharedProject) || window.location.hash.includes('project=') || window.location.href.includes('boost');
+    return (
+      Boolean(initialSharedProject) ||
+      window.location.hash.includes('project=') ||
+      window.location.hash.includes('v2=') ||
+      window.location.href.includes('boost')
+    );
   });
   const [isSecureTask, setIsSecureTask] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -57,24 +62,35 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
     setCompilationResult(result);
   }, []);
 
-  // Initial compile on mount & listen to hashchange for live project loading via URL
+  // Initial compile on mount & listen to hashchange for live project loading via URL (v1 Deflate & v2 Rust WASM)
   useEffect(() => {
     triggerCompile(files);
 
-    const handleHashChange = () => {
-      const shared = decompressProjectFromUrl();
-      if (shared && shared.files.length > 0) {
-        setIsLoadedFromUrl(true);
-        setIsSecureTask(Boolean(shared.isSecureTask));
-        filesRef.current = shared.files;
-        setFiles(shared.files);
-        // Выбираем первый открываемый файл, не являющийся скрытым заданием
-        const firstVisible = shared.isSecureTask
-          ? shared.files.find((f) => !f.name.toLowerCase().includes('task') && !f.name.toLowerCase().includes('sololearn'))
-          : shared.files[0];
-        setActiveFileName(firstVisible?.name || shared.files[0]?.name || '');
-        triggerCompile(shared.files);
+    const loadAsyncProject = async () => {
+      const currentHash = window.location.hash;
+      if (currentHash.includes('v2=') || currentHash.includes('project=')) {
+        const shared = await decompressProjectFromUrlAsync(currentHash);
+        if (shared && shared.files.length > 0) {
+          setIsLoadedFromUrl(true);
+          setIsSecureTask(Boolean(shared.isSecureTask));
+          filesRef.current = shared.files;
+          setFiles(shared.files);
+          const firstVisible = shared.isSecureTask
+            ? shared.files.find((f) => !f.name.toLowerCase().includes('task') && !f.name.toLowerCase().includes('sololearn'))
+            : shared.files[0];
+          setActiveFileName(firstVisible?.name || shared.files[0]?.name || '');
+          triggerCompile(shared.files);
+        }
       }
+    };
+
+    // Если на старте был v2, загружаем его через WASM
+    if (window.location.hash.includes('v2=')) {
+      loadAsyncProject();
+    }
+
+    const handleHashChange = () => {
+      loadAsyncProject();
     };
 
     window.addEventListener('hashchange', handleHashChange);

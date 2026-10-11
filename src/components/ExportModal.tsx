@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'preact/hooks';
-import { X, Copy, Check, Download, Share2, Link, AlertTriangle, ShieldCheck } from 'lucide-preact';
+import { useState, useMemo, useEffect } from 'preact/hooks';
+import { X, Copy, Check, Download, Share2, Link, AlertTriangle, ShieldCheck, Zap } from 'lucide-preact';
 import { buildProductionStandaloneHtml, type VirtualFile } from '../compiler/templateEngine';
-import { compressProjectToUrl, type ShareUrlStats } from '../compiler/urlShareCompressor';
+import { compressProjectToUrl, compressProjectToUrlV2, type ShareUrlStats } from '../compiler/urlShareCompressor';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -20,13 +20,31 @@ export function ExportModal({
 
   const [activeTab, setActiveTab] = useState<'share' | 'html' | 'iframe' | 'json'>('share');
   const [copied, setCopied] = useState(false);
-
   const [isSecureShare, setIsSecureShare] = useState(false);
+  const [useWasmV2, setUseWasmV2] = useState(true);
+  const [wasmStats, setWasmStats] = useState<ShareUrlStats | null>(null);
 
-  // Сжатие проекта в URL через fflate (с учетом флага скрытия task.json)
-  const shareStats: ShareUrlStats = useMemo(() => {
+  // Сжатие проекта в URL через fflate (Deflate v1)
+  const v1Stats: ShareUrlStats = useMemo(() => {
     return compressProjectToUrl(files, window.location.href, snippetTitle, isSecureShare);
   }, [files, snippetTitle, isSecureShare]);
+
+  // Сжатие проекта в URL через Rust WASM (Brotli + MessagePack v2)
+  useEffect(() => {
+    let isMounted = true;
+    compressProjectToUrlV2(files, window.location.href, snippetTitle, isSecureShare)
+      .then((stats) => {
+        if (isMounted) setWasmStats(stats);
+      })
+      .catch((err) => {
+        console.warn('WASM compress not ready yet:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [files, snippetTitle, isSecureShare]);
+
+  const activeShareStats: ShareUrlStats = useWasmV2 && wasmStats ? wasmStats : v1Stats;
 
   const standaloneHtml = useMemo(() => {
     return buildProductionStandaloneHtml(files, snippetTitle);
@@ -50,7 +68,7 @@ export function ExportModal({
   const getContent = () => {
     switch (activeTab) {
       case 'share':
-        return shareStats.url;
+        return activeShareStats.url;
       case 'iframe':
         return iframeSnippet;
       case 'json':
@@ -94,7 +112,7 @@ export function ExportModal({
             class={`chakra-modal__tab ${activeTab === 'share' ? 'active' : ''}`}
             onClick={() => setActiveTab('share')}
           >
-            🔗 Ссылка (fflate URL)
+            🔗 Ссылка (URL Share)
           </button>
           <button
             class={`chakra-modal__tab ${activeTab === 'html' ? 'active' : ''}`}
@@ -119,12 +137,48 @@ export function ExportModal({
         <div class="chakra-modal__body">
           {activeTab === 'share' ? (
             <div class="share-url-panel">
+              {/* Переключатель кодеков: WASM V2 vs fflate V1 */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '10px',
+                  padding: '6px 10px',
+                  background: 'rgba(24, 24, 27, 0.6)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(63, 63, 70, 0.5)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    class={`chakra-button chakra-button--xs ${useWasmV2 ? 'chakra-button--solid-teal' : 'chakra-button--ghost'}`}
+                    onClick={() => setUseWasmV2(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Zap size={12} />
+                    <span>Rust WASM V2 (Brotli)</span>
+                  </button>
+                  <button
+                    class={`chakra-button chakra-button--xs ${!useWasmV2 ? 'chakra-button--solid-teal' : 'chakra-button--ghost'}`}
+                    onClick={() => setUseWasmV2(false)}
+                  >
+                    fflate V1 (Deflate)
+                  </button>
+                </div>
+                {wasmStats && (
+                  <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 600 }}>
+                    ⚡ WASM длина: {wasmStats.urlLength} симв. vs {v1Stats.urlLength} симв.
+                  </span>
+                )}
+              </div>
+
               <div class="share-url-input-wrap">
                 <input
                   type="text"
                   readOnly
                   class="share-url-input"
-                  value={shareStats.url}
+                  value={activeShareStats.url}
                   onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
                 <button
@@ -169,36 +223,36 @@ export function ExportModal({
               <div class="share-metrics-grid">
                 <div class="share-metric-card">
                   <span class="metric-label">Всего строк кода</span>
-                  <strong class="metric-val">{shareStats.totalLines}</strong>
+                  <strong class="metric-val">{activeShareStats.totalLines}</strong>
                 </div>
                 <div class="share-metric-card">
                   <span class="metric-label">Сжатый размер</span>
-                  <strong class="metric-val">{shareStats.compressedBytes} байт</strong>
+                  <strong class="metric-val">{activeShareStats.compressedBytes} байт</strong>
                 </div>
                 <div class="share-metric-card">
-                  <span class="metric-label">Сжатие fflate</span>
-                  <strong class="metric-val">{shareStats.compressionRatio}x</strong>
+                  <span class="metric-label">{useWasmV2 ? 'Сжатие WASM' : 'Сжатие fflate'}</span>
+                  <strong class="metric-val">{activeShareStats.compressionRatio}x</strong>
                 </div>
                 <div class="share-metric-card">
                   <span class="metric-label">Длина URL ссылки</span>
-                  <strong class="metric-val">{shareStats.urlLength} симв.</strong>
+                  <strong class="metric-val">{activeShareStats.urlLength} симв.</strong>
                 </div>
               </div>
 
               {/* Статус безопасности для мессенджеров и браузера */}
               <div class="share-status-block">
-                {shareStats.isSafeForMessengers ? (
+                {activeShareStats.isSafeForMessengers ? (
                   <div class="share-badge-notice safe">
                     <ShieldCheck size={15} color="#4ade80" />
                     <span>
-                      <strong>Безопасно для мессенджеров и соцсетей:</strong> Длина ссылки {shareStats.urlLength} символов (до 4000 симв.). Ссылка не будет обрезана в Telegram/WhatsApp.
+                      <strong>Безопасно для мессенджеров и соцсетей:</strong> Длина ссылки {activeShareStats.urlLength} символов (до 4000 симв.). Ссылка не будет обрезана в Telegram/WhatsApp.
                     </span>
                   </div>
-                ) : shareStats.isSafeForBrowser ? (
+                ) : activeShareStats.isSafeForBrowser ? (
                   <div class="share-badge-notice warning">
                     <AlertTriangle size={15} color="#fbbf24" />
                     <span>
-                      <strong>Открытие в браузере поддерживается:</strong> Длина ссылки {shareStats.urlLength} символов (до 20 000 в Chrome/Safari/Firefox). В некоторых мессенджерах (Telegram) длинные ссылки могут усекаться.
+                      <strong>Открытие в браузере поддерживается:</strong> Длина ссылки {activeShareStats.urlLength} символов (до 20 000 в Chrome/Safari/Firefox). В некоторых мессенджерах (Telegram) длинные ссылки могут усекаться.
                     </span>
                   </div>
                 ) : (
@@ -212,7 +266,11 @@ export function ExportModal({
               </div>
 
               <div class="share-table-guide">
-                <div class="guide-title">Вместимость кода в одну ссылку при сжатии fflate (Deflate level 9):</div>
+                <div class="guide-title">
+                  {useWasmV2
+                    ? 'Вместимость кода при ультра-сжатии Rust WASM (Brotli + MessagePack):'
+                    : 'Вместимость кода при сжатии fflate (Deflate level 9):'}
+                </div>
                 <table class="guide-table">
                   <thead>
                     <tr>
@@ -221,13 +279,13 @@ export function ExportModal({
                     </tr>
                   </thead>
                   <tbody>
-                    <tr class={shareStats.urlLength <= 4000 ? 'row-active' : ''}>
+                    <tr class={activeShareStats.urlLength <= 4000 ? 'row-active' : ''}>
                       <td>Мессенджеры (Telegram, соцсети до 4 КБ)</td>
-                      <td>~150 – 300 строк кода</td>
+                      <td>~200 – 450 строк кода</td>
                     </tr>
-                    <tr class={shareStats.urlLength > 4000 && shareStats.urlLength <= 20000 ? 'row-active' : ''}>
+                    <tr class={activeShareStats.urlLength > 4000 && activeShareStats.urlLength <= 20000 ? 'row-active' : ''}>
                       <td>Браузеры (Chrome / Safari / Firefox до 20 КБ)</td>
-                      <td>~1000 – 1500 строк кода</td>
+                      <td>~1200 – 2000 строк кода</td>
                     </tr>
                     <tr>
                       <td>Максимум при идеальном сжатии</td>

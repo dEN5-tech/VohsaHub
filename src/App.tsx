@@ -68,9 +68,13 @@ export function App() {
   const [activeTaskId, setActiveTaskId] = useState<string>('');
   const [lastValidationResult, setLastValidationResult] = useState<TaskValidationResult | null>(null);
 
-  // 1.2 Состояние UI окружения: по умолчанию 'explorer' (или null если нет задач), но при загрузке по URL с задачами открываем 'tasks'
   const [activeSidebarTab, setActiveSidebarTab] = useState<'explorer' | 'tasks' | null>(() => {
-    if (typeof window !== 'undefined' && (window.location.hash.includes('project=') || window.location.href.includes('boost'))) {
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.hash.includes('project=') ||
+        window.location.hash.includes('v2=') ||
+        window.location.href.includes('boost'))
+    ) {
       return 'tasks';
     }
     return 'explorer';
