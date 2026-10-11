@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:tasks": "node scripts/generate-task.js"
   },
   "devDependencies": {
     "@types/acorn": "^6.0.4",
