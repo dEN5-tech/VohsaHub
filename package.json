@@ -1,0 +1,35 @@
+{
+  "name": "vohsahub",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/acorn": "^6.0.4",
+    "@types/css-tree": "^3.2.0",
+    "@types/parse5": "^7.0.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vite-plugin-monaco-editor": "^1.1.0"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "^3.37.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@preact/preset-vite": "^2.10.6",
+    "acorn": "^8.19.0",
+    "css-tree": "^3.2.1",
+    "emmet-monaco-es": "^5.7.0",
+    "eta": "^4.6.0",
+    "fflate": "^0.8.3",
+    "framer-motion": "^14.1.0",
+    "lucide-preact": "^1.55.0",
+    "monaco-editor": "^0.57.0",
+    "parse5": "^8.0.1",
+    "preact": "^11.0.1"
+  }
+}

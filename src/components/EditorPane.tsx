@@ -1,0 +1,720 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { monaco } from '../monacoSetup';
+import { Plus, X, ChevronRight, Sparkles } from 'lucide-preact';
+import { getFileIcon } from './Explorer';
+import { findVirtualFile, type VirtualFile } from '../compiler/templateEngine';
+import type { LearningTask, TaskValidationResult } from '../types/learningTasks';
+
+interface EditorPaneProps {
+  files: VirtualFile[];
+  activeFileName: string;
+  onSelectFile: (fileName: string) => void;
+  onFileChange: (fileName: string, content: string) => void;
+  onCreateFile: (fileName: string) => void;
+  onDeleteFile: (fileName: string) => void;
+  onRenameFile: (oldName: string, newName: string) => void;
+  onCursorChange: (pos: { line: number; col: number }) => void;
+  taskValidationResult?: TaskValidationResult | null;
+  activeTask?: LearningTask;
+  onLoadTaskTemplate?: (task: LearningTask) => void;
+}
+
+function getFileLanguage(fileName: string): string {
+  if (fileName.endsWith('.eta') || fileName.endsWith('.html')) return 'html';
+  if (fileName.endsWith('.json')) return 'json';
+  if (fileName.endsWith('.css') || fileName.endsWith('.scss')) return 'css';
+  if (fileName.endsWith('.js') || fileName.endsWith('.mjs')) return 'javascript';
+  if (fileName.endsWith('.ts')) return 'typescript';
+  if (fileName.endsWith('.md')) return 'markdown';
+  return 'plaintext';
+}
+
+export function EditorPane({
+  files,
+  activeFileName,
+  onSelectFile,
+  onFileChange,
+  onCreateFile,
+  onDeleteFile,
+  onRenameFile,
+  onCursorChange,
+  taskValidationResult,
+  activeTask,
+  onLoadTaskTemplate,
+}: EditorPaneProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const modelsMapRef = useRef<Map<string, monaco.editor.ITextModel>>(new Map());
+
+  // Refs for callbacks to always execute the freshest parent function in Monaco event listeners
+  const onFileChangeRef = useRef(onFileChange);
+  const onCursorChangeRef = useRef(onCursorChange);
+  const onSelectFileRef = useRef(onSelectFile);
+  const onCreateFileRef = useRef(onCreateFile);
+  const onDeleteFileRef = useRef(onDeleteFile);
+  const onRenameFileRef = useRef(onRenameFile);
+  const filesRef = useRef(files);
+  const isInternalChangeRef = useRef(false);
+
+  filesRef.current = files;
+  onFileChangeRef.current = onFileChange;
+  onCursorChangeRef.current = onCursorChange;
+  onSelectFileRef.current = onSelectFile;
+  onCreateFileRef.current = onCreateFile;
+  onDeleteFileRef.current = onDeleteFile;
+  onRenameFileRef.current = onRenameFile;
+
+  // Local state for creating new file inline in tab bar
+  const [isCreating, setIsCreating] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const newFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Local state for renaming file inline in tab bar
+  const [editingFileName, setEditingFileName] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  // 1. Initialize Monaco editor
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Create models for all initial files
+    files.forEach((file) => {
+      if (!modelsMapRef.current.has(file.name)) {
+        const lang = getFileLanguage(file.name);
+        const model = monaco.editor.createModel(file.content, lang);
+        modelsMapRef.current.set(file.name, model);
+      }
+    });
+
+    const activeModel = modelsMapRef.current.get(activeFileName) || null;
+
+    const editor = monaco.editor.create(containerRef.current, {
+      model: activeModel,
+      theme: 'chakra-dark',
+      fontSize: 13,
+      fontFamily: "'Fira Code', 'Courier New', monospace",
+      fontLigatures: true,
+      lineNumbers: 'on',
+      roundedSelection: true,
+      scrollBeyondLastLine: false,
+      readOnly: false,
+      cursorBlinking: 'smooth',
+      cursorSmoothCaretAnimation: 'on',
+      smoothScrolling: true,
+      minimap: { enabled: true, maxColumn: 80, renderCharacters: false },
+      automaticLayout: true,
+      tabSize: 2,
+      wordWrap: 'on',
+      padding: { top: 8, bottom: 8 },
+      overviewRulerLanes: 0,
+      overviewRulerBorder: false,
+      hideCursorInOverviewRuler: true,
+      suggestOnTriggerCharacters: true,
+      quickSuggestions: {
+        other: 'on',
+        comments: 'off',
+        strings: 'on',
+      },
+      suggest: {
+        snippetsPreventQuickSuggestions: false,
+        showWords: true,
+        showClasses: true,
+        showFunctions: true,
+        showVariables: true,
+        showConstants: true,
+        showMethods: true,
+        showProperties: true,
+        showEvents: true,
+        showOperators: true,
+        showUnits: true,
+        showValues: true,
+        showColors: true,
+        showFiles: true,
+        showReferences: true,
+        showFolders: true,
+        showTypeParameters: true,
+        showModules: true,
+      },
+      parameterHints: {
+        enabled: true,
+      },
+      autoClosingBrackets: 'always',
+      autoClosingQuotes: 'always',
+      formatOnType: true,
+      formatOnPaste: true,
+    });
+
+    editorInstanceRef.current = editor;
+
+    // Listen to changes on active editor model through ref to prevent stale closures
+    const changeDisposable = editor.onDidChangeModelContent(() => {
+      const currentModel = editor.getModel();
+      if (!currentModel) return;
+
+      for (const [name, model] of modelsMapRef.current.entries()) {
+        if (model === currentModel) {
+          const val = currentModel.getValue();
+          isInternalChangeRef.current = true;
+          onFileChangeRef.current(name, val);
+          break;
+        }
+      }
+    });
+
+    // Listen to cursor position
+    const cursorDisposable = editor.onDidChangeCursorPosition((e) => {
+      onCursorChangeRef.current({
+        line: e.position.lineNumber,
+        col: e.position.column,
+      });
+    });
+
+    // Register custom LinkProvider to enable "Follow link (Ctrl + click)" for virtual files
+    const supportedLanguages = ['html', 'css', 'javascript', 'typescript'];
+    const linkProviderDisposables: monaco.IDisposable[] = [];
+
+    supportedLanguages.forEach((lang) => {
+      const disposable = monaco.languages.registerLinkProvider(lang, {
+        provideLinks(model) {
+          const links: monaco.languages.ILink[] = [];
+          const lineCount = model.getLineCount();
+
+          // Regex matching relative src="...", href="...", url("..."), import '...'
+          const linkRegex = /(?:(?:src|href)\s*=\s*["']([^"']+)["'])|(?:url\(\s*["']?([^"')]+)["']?\s*\))|(?:(?:from|import)\s*["']([^"']+)["'])/g;
+
+          for (let lineNum = 1; lineNum <= lineCount; lineNum++) {
+            const lineContent = model.getLineContent(lineNum);
+            let match: RegExpExecArray | null;
+            linkRegex.lastIndex = 0;
+
+            while ((match = linkRegex.exec(lineContent)) !== null) {
+              const rawTarget = match[1] || match[2] || match[3];
+              if (!rawTarget) continue;
+
+              // Ignore external URLs and data URIs
+              if (
+                rawTarget.startsWith('http://') ||
+                rawTarget.startsWith('https://') ||
+                rawTarget.startsWith('//') ||
+                rawTarget.startsWith('data:') ||
+                rawTarget.startsWith('#')
+              ) {
+                continue;
+              }
+
+              // Check if file exists in our Virtual File System
+              const matchedVfsFile = findVirtualFile(rawTarget, filesRef.current);
+              if (matchedVfsFile) {
+                const subIndex = match[0].indexOf(rawTarget);
+                const startCol = match.index + subIndex + 1; // 1-based index in Monaco
+                const endCol = startCol + rawTarget.length;
+
+                links.push({
+                  range: new monaco.Range(lineNum, startCol, lineNum, endCol),
+                  url: `vfs://${matchedVfsFile.name}`,
+                  tooltip: `Перейти к файлу ${matchedVfsFile.name} (Ctrl + клик)`,
+                });
+              }
+            }
+          }
+
+          return { links };
+        },
+      });
+      linkProviderDisposables.push(disposable);
+    });
+
+    // Intercept clicks on links with vfs:// protocol
+    const mouseDisposable = editor.onMouseDown((e) => {
+      // Check if Ctrl / Cmd key is held and target has a link
+      if ((e.event.ctrlKey || e.event.metaKey) && e.target?.position) {
+        const model = editor.getModel();
+        if (!model) return;
+
+        const pos = e.target.position;
+        const lineContent = model.getLineContent(pos.lineNumber);
+        const linkRegex = /(?:(?:src|href)\s*=\s*["']([^"']+)["'])|(?:url\(\s*["']?([^"')]+)["']?\s*\))|(?:(?:from|import)\s*["']([^"']+)["'])/g;
+
+        let match: RegExpExecArray | null;
+        while ((match = linkRegex.exec(lineContent)) !== null) {
+          const rawTarget = match[1] || match[2] || match[3];
+          if (!rawTarget) continue;
+          const subIndex = match[0].indexOf(rawTarget);
+          const startCol = match.index + subIndex + 1;
+          const endCol = startCol + rawTarget.length;
+
+          if (pos.column >= startCol && pos.column <= endCol) {
+            const matchedVfsFile = findVirtualFile(rawTarget, filesRef.current);
+            if (matchedVfsFile) {
+              e.event.preventDefault();
+              e.event.stopPropagation();
+              onSelectFileRef.current(matchedVfsFile.name);
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    const resizeObserver = new ResizeObserver(() => {
+      editor.layout();
+    });
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      changeDisposable.dispose();
+      cursorDisposable.dispose();
+      mouseDisposable.dispose();
+      linkProviderDisposables.forEach((d) => d.dispose());
+      modelsMapRef.current.forEach((m) => m.dispose());
+      modelsMapRef.current.clear();
+      editor.dispose();
+    };
+  }, []);
+
+  // 2. Synchronize models map with files array and activeFileName
+  useEffect(() => {
+    // Add models for new files or update content if changed externally
+    const isInternal = isInternalChangeRef.current;
+    isInternalChangeRef.current = false;
+
+    files.forEach((file) => {
+      if (!modelsMapRef.current.has(file.name)) {
+        const lang = getFileLanguage(file.name);
+        const model = monaco.editor.createModel(file.content, lang);
+        modelsMapRef.current.set(file.name, model);
+      } else if (!isInternal) {
+        const model = modelsMapRef.current.get(file.name)!;
+        if (model.getValue() !== file.content) {
+          model.setValue(file.content);
+        }
+      }
+    });
+
+    // Remove models for deleted files
+    const fileNames = new Set(files.map((f) => f.name));
+    for (const [name, model] of modelsMapRef.current.entries()) {
+      if (!fileNames.has(name)) {
+        model.dispose();
+        modelsMapRef.current.delete(name);
+      }
+    }
+
+    // Keep editor pointing to active file
+    if (editorInstanceRef.current) {
+      const targetModel = modelsMapRef.current.get(activeFileName) || null;
+      if (editorInstanceRef.current.getModel() !== targetModel) {
+        editorInstanceRef.current.setModel(targetModel);
+        const pos = editorInstanceRef.current.getPosition();
+        if (pos) {
+          onCursorChangeRef.current({ line: pos.lineNumber, col: pos.column });
+        }
+      }
+    }
+  }, [files, activeFileName]);
+
+  // 3. Set Task Validation markers in Monaco Editor
+  useEffect(() => {
+    if (!editorInstanceRef.current) return;
+    const model = modelsMapRef.current.get(activeFileName);
+    if (!model) return;
+
+    if (!taskValidationResult || taskValidationResult.targetFile.toLowerCase() !== activeFileName.toLowerCase()) {
+      monaco.editor.setModelMarkers(model, 'sololearn-task', []);
+      return;
+    }
+
+    const markers: monaco.editor.IMarkerData[] = [];
+
+    // AST syntax error
+    if (!taskValidationResult.astSummary.syntaxValid && taskValidationResult.astSummary.syntaxError) {
+      const line = taskValidationResult.astSummary.line || 1;
+      const col = taskValidationResult.astSummary.column || 1;
+      markers.push({
+        severity: monaco.MarkerSeverity.Error,
+        message: `[AST Синтаксис] ${taskValidationResult.astSummary.syntaxError}`,
+        startLineNumber: line,
+        startColumn: col,
+        endLineNumber: line,
+        endColumn: model.getLineMaxColumn(line),
+      });
+    }
+
+    // Criteria failures
+    taskValidationResult.criteriaResults
+      .filter((c) => !c.passed && c.message)
+      .forEach((c) => {
+        const line = c.line || 1;
+        markers.push({
+          severity: monaco.MarkerSeverity.Warning,
+          message: `[Задание] ${c.message}`,
+          startLineNumber: line,
+          startColumn: c.column || 1,
+          endLineNumber: line,
+          endColumn: model.getLineMaxColumn(line),
+        });
+      });
+
+    monaco.editor.setModelMarkers(model, 'sololearn-task', markers);
+  }, [activeFileName, taskValidationResult]);
+
+  // 4. Monaco Content Widgets: Инлайн-карточки тренажера синтаксиса [[slot:id]]
+  const activeWidgetsRef = useRef<monaco.editor.IContentWidget[]>([]);
+
+  useEffect(() => {
+    const editor = editorInstanceRef.current;
+    if (!editor) return;
+
+    // Очистить старые виджеты
+    activeWidgetsRef.current.forEach((w) => {
+      try {
+        editor.removeContentWidget(w);
+      } catch (err) {
+        // ignore
+      }
+    });
+    activeWidgetsRef.current = [];
+
+    const targetModel = modelsMapRef.current.get(activeFileName);
+    const model = editor.getModel();
+    if (!model || (targetModel && model !== targetModel)) return;
+
+    const currentText = model.getValue();
+    const slotRegex = /\[\[slot:([a-zA-Z0-9_-]+)\]\]/g;
+    const matches: { id: string; slotName: string; range: monaco.Range }[] = [];
+
+    let match: RegExpExecArray | null;
+    while ((match = slotRegex.exec(currentText)) !== null) {
+      const slotName = match[1];
+      const startPos = model.getPositionAt(match.index);
+      const endPos = model.getPositionAt(match.index + match[0].length);
+      matches.push({
+        id: `slot-widget-${slotName}-${match.index}`,
+        slotName,
+        range: new monaco.Range(
+          startPos.lineNumber,
+          startPos.column,
+          endPos.lineNumber,
+          endPos.column
+        ),
+      });
+    }
+
+    if (matches.length === 0) return;
+
+    matches.forEach(({ id, slotName, range }) => {
+      const slotConfig = activeTask?.slots?.[slotName];
+
+      const domNode = document.createElement('div');
+      domNode.className = 'monaco-inline-slot-widget';
+
+      const handleSlotSelect = (val: string) => {
+        // Ищем актуальный диапазон токена в модели на случай смещения строк или соседних замен
+        const targetToken = `[[slot:${slotName}]]`;
+        const currentMatches = model.findMatches(targetToken, false, false, true, null, true);
+        const targetRange = currentMatches.length > 0 ? currentMatches[0].range : range;
+
+        editor.executeEdits('slot-replace', [
+          {
+            range: targetRange,
+            text: val,
+            forceMoveMarkers: true,
+          },
+        ]);
+        editor.focus();
+      };
+
+      if (!slotConfig || slotConfig.type === 'chips') {
+        const options = slotConfig?.options || ['вариант 1', 'вариант 2'];
+        const container = document.createElement('div');
+        container.className = 'slot-chips-wrap';
+
+        const label = document.createElement('span');
+        label.className = 'slot-badge-label';
+        label.textContent = slotName + ':';
+        container.appendChild(label);
+
+        options.forEach((opt) => {
+          const chipBtn = document.createElement('button');
+          chipBtn.className = 'slot-chip-btn';
+          chipBtn.textContent = opt;
+          chipBtn.type = 'button';
+          chipBtn.title = `Вставить "${opt}"`;
+          chipBtn.onclick = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            handleSlotSelect(opt);
+          };
+          container.appendChild(chipBtn);
+        });
+        domNode.appendChild(container);
+      } else if (slotConfig.type === 'select') {
+        const select = document.createElement('select');
+        select.className = 'slot-select-input';
+
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.disabled = true;
+        defaultOpt.selected = true;
+        defaultOpt.textContent = slotConfig.placeholder || `[${slotName}]`;
+        select.appendChild(defaultOpt);
+
+        (slotConfig.options || []).forEach((opt) => {
+          const optionEl = document.createElement('option');
+          optionEl.value = opt;
+          optionEl.textContent = opt;
+          select.appendChild(optionEl);
+        });
+
+        select.onchange = (e) => {
+          e.stopPropagation();
+          const selectedVal = (e.target as HTMLSelectElement).value;
+          if (selectedVal) {
+            handleSlotSelect(selectedVal);
+          }
+        };
+        domNode.appendChild(select);
+      } else if (slotConfig.type === 'input') {
+        const inputWrap = document.createElement('div');
+        inputWrap.className = 'slot-input-wrap';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'slot-text-input';
+        input.placeholder = slotConfig.placeholder || slotName;
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'slot-input-confirm-btn';
+        confirmBtn.textContent = '✓';
+        confirmBtn.title = 'Подтвердить ввод';
+
+        const submitInput = () => {
+          const val = input.value.trim();
+          if (val) {
+            handleSlotSelect(val);
+          }
+        };
+
+        confirmBtn.onclick = (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          submitInput();
+        };
+
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.stopPropagation();
+            e.preventDefault();
+            submitInput();
+          }
+        };
+
+        inputWrap.appendChild(input);
+        inputWrap.appendChild(confirmBtn);
+        domNode.appendChild(inputWrap);
+      }
+
+      const widget: monaco.editor.IContentWidget = {
+        getId: () => id,
+        getDomNode: () => domNode,
+        getPosition: () => ({
+          position: {
+            lineNumber: range.startLineNumber,
+            column: range.startColumn,
+          },
+          preference: [monaco.editor.ContentWidgetPositionPreference.EXACT],
+        }),
+      };
+
+      editor.addContentWidget(widget);
+      activeWidgetsRef.current.push(widget);
+    });
+
+    return () => {
+      activeWidgetsRef.current.forEach((w) => {
+        try {
+          editor.removeContentWidget(w);
+        } catch (err) {
+          // ignore
+        }
+      });
+      activeWidgetsRef.current = [];
+    };
+  }, [files, activeFileName, activeTask]);
+
+  const handleStartCreate = () => {
+    setIsCreating(true);
+    setNewFileName('');
+    setTimeout(() => newFileInputRef.current?.focus(), 50);
+  };
+
+  const handleConfirmCreate = () => {
+    let name = newFileName.trim();
+    if (!name) {
+      setIsCreating(false);
+      return;
+    }
+    if (!name.includes('.')) {
+      name += '.html';
+    }
+    onCreateFile(name);
+    setIsCreating(false);
+    setNewFileName('');
+  };
+
+  const handleStartRename = (fileName: string) => {
+    setEditingFileName(fileName);
+    setRenameValue(fileName);
+  };
+
+  const handleConfirmRename = () => {
+    if (editingFileName && renameValue.trim() && renameValue.trim() !== editingFileName) {
+      onRenameFile(editingFileName, renameValue.trim());
+    }
+    setEditingFileName(null);
+  };
+
+  return (
+    <div class="editor-pane-wrapper">
+      <div class="editor-tabs-bar">
+        <div class="editor-tabs-scroll">
+          {files.map((file) => {
+            const isActive = file.name === activeFileName;
+            const isEditing = editingFileName === file.name;
+
+            return (
+              <div
+                key={file.name}
+                class={`tab-item ${isActive ? 'active' : ''}`}
+                onClick={() => onSelectFile(file.name)}
+                onDblClick={() => handleStartRename(file.name)}
+                title="Двойной клик для переименования"
+              >
+                {getFileIcon(file.name, 13)}
+
+                {isEditing ? (
+                  <input
+                    type="text"
+                    class="tab-rename-input"
+                    value={renameValue}
+                    onInput={(e) => setRenameValue((e.target as HTMLInputElement).value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleConfirmRename();
+                      if (e.key === 'Escape') setEditingFileName(null);
+                    }}
+                    onBlur={handleConfirmRename}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <span class="tab-name">{file.name}</span>
+                )}
+
+                <button
+                  class="tab-close-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteFile(file.name);
+                  }}
+                  title="Удалить файл"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            );
+          })}
+
+          {isCreating ? (
+            <div class="tab-item new-file-input-tab">
+              {getFileIcon(newFileName || 'index.html', 13)}
+              <input
+                ref={newFileInputRef}
+                type="text"
+                class="tab-create-input"
+                placeholder="filename.html"
+                value={newFileName}
+                onInput={(e) => setNewFileName((e.target as HTMLInputElement).value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleConfirmCreate();
+                  if (e.key === 'Escape') setIsCreating(false);
+                }}
+                onBlur={handleConfirmCreate}
+              />
+            </div>
+          ) : (
+            <button
+              class="tab-add-btn"
+              onClick={handleStartCreate}
+              title="Создать новый файл"
+            >
+              <Plus size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div class="editor-breadcrumbs">
+        <div class="breadcrumbs-left">
+          <span class="breadcrumb-item">workspace</span>
+          {activeFileName ? (
+            <>
+              <ChevronRight size={11} class="breadcrumb-sep" />
+              <span class="breadcrumb-item breadcrumb-current">
+                {getFileIcon(activeFileName, 12)}
+                <span>{activeFileName}</span>
+              </span>
+            </>
+          ) : null}
+        </div>
+
+        {activeTask?.templateCode && activeTask.targetFile === activeFileName && (
+          <button
+            class="template-load-pill-btn"
+            onClick={() => {
+              if (onLoadTaskTemplate) {
+                onLoadTaskTemplate(activeTask);
+              } else if (activeTask.templateCode) {
+                onFileChange(activeFileName, activeTask.templateCode);
+              }
+            }}
+            title="Загрузить интерактивный тренажер синтаксиса с карточками для этого урока"
+          >
+            <Sparkles size={12} color="#5eead4" />
+            <span>Вставить тренажер урока</span>
+          </button>
+        )}
+      </div>
+
+      <div
+        class="monaco-host"
+        ref={containerRef}
+        style={files.length === 0 ? { display: 'none' } : undefined}
+      />
+
+      {files.length === 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 'calc(100% - 70px)',
+            color: '#71717a',
+            gap: '1rem',
+            padding: '2rem',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>В проекте нет файлов.</p>
+          <button
+            class="chakra-button chakra-button--teal chakra-button--sm"
+            onClick={handleStartCreate}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Plus size={14} /> Создать файл
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

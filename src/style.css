@@ -1,0 +1,2784 @@
+@import './chakra-tokens.css';
+
+/* ==========================================================================
+   Chakra UI Global Base & Theme Setup
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--chakra-colors-bg);
+  color: var(--chakra-colors-fg);
+  font-family: var(--chakra-fonts-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+#app, .vohsa-app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--chakra-colors-bg);
+  color: var(--chakra-colors-fg);
+}
+
+/* ==========================================================================
+   Chakra UI Component Primitives
+   ========================================================================== */
+
+/* Chakra Button */
+.chakra-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  line-height: 1.25rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.chakra-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+.chakra-button--solid-teal {
+  background-color: var(--chakra-colors-teal-solid, #14b8a6);
+  color: #042f2e;
+}
+.chakra-button--solid-teal:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: var(--chakra-shadows-sm);
+}
+
+.chakra-button--solid-gray {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-fg, #fafafa);
+  border-color: var(--chakra-colors-border, #3f3f46);
+}
+.chakra-button--solid-gray:hover:not(:disabled) {
+  background-color: var(--chakra-colors-bg-emphasized, #3f3f46);
+}
+
+.chakra-button--outline {
+  background-color: transparent;
+  border-color: var(--chakra-colors-border, #3f3f46);
+  color: var(--chakra-colors-fg, #fafafa);
+}
+.chakra-button--outline:hover:not(:disabled) {
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-color: var(--chakra-colors-border-emphasized, #52525b);
+}
+
+.chakra-button--subtle-teal {
+  background-color: var(--chakra-colors-teal-subtle, rgba(20, 184, 166, 0.12));
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  border-color: rgba(20, 184, 166, 0.25);
+}
+.chakra-button--subtle-teal:hover:not(:disabled) {
+  background-color: rgba(20, 184, 166, 0.2);
+}
+
+.chakra-button--ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+}
+.chakra-button--ghost:hover:not(:disabled) {
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.chakra-button--xs {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--chakra-radii-sm, 0.25rem);
+}
+
+/* Chakra Badge */
+.chakra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.45rem;
+  border-radius: var(--chakra-radii-sm, 0.25rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1rem;
+}
+
+.chakra-badge--teal {
+  background-color: var(--chakra-colors-teal-subtle, rgba(20, 184, 166, 0.15));
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+}
+
+.chakra-badge--gray {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  border: 1px solid var(--chakra-colors-border, #3f3f46);
+}
+
+.chakra-badge--red {
+  background-color: var(--chakra-colors-red-subtle, rgba(239, 68, 68, 0.15));
+  color: var(--chakra-colors-red-fg, #fca5a5);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.chakra-badge--yellow {
+  background-color: var(--chakra-colors-yellow-subtle, rgba(234, 179, 8, 0.15));
+  color: var(--chakra-colors-yellow-fg, #fde047);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+/* Chakra Input */
+.chakra-input {
+  width: 100%;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border: 1px solid var(--chakra-colors-border, #3f3f46);
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  color: var(--chakra-colors-fg, #fafafa);
+  font-size: 0.8125rem;
+  padding: 0.45rem 0.75rem;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.chakra-input:focus {
+  border-color: var(--chakra-colors-teal-focus-ring, #14b8a6);
+  box-shadow: 0 0 0 1px var(--chakra-colors-teal-focus-ring, #14b8a6);
+}
+
+/* Chakra Switch */
+.chakra-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.78125rem;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  user-select: none;
+}
+
+.chakra-switch input {
+  display: none;
+}
+
+.chakra-switch__track {
+  width: 32px;
+  height: 18px;
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  border: 1px solid var(--chakra-colors-border, #3f3f46);
+  border-radius: var(--chakra-radii-full, 9999px);
+  position: relative;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.chakra-switch__thumb {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--chakra-colors-fg, #fafafa);
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chakra-switch input:checked + .chakra-switch__track {
+  background-color: var(--chakra-colors-teal-solid, #14b8a6);
+  border-color: var(--chakra-colors-teal-solid, #14b8a6);
+}
+
+.chakra-switch input:checked + .chakra-switch__track .chakra-switch__thumb {
+  transform: translateX(14px);
+  background-color: #042f2e;
+}
+
+/* ==========================================================================
+   Header Layout (Chakra Navbar)
+   ========================================================================== */
+/* ==========================================================================
+   Header Layout (Chakra Navbar)
+   ========================================================================== */
+.app-header {
+  height: 54px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-bottom: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.85rem;
+  gap: 0.75rem;
+  z-index: 10;
+  box-shadow: var(--chakra-shadows-xs);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, var(--chakra-colors-teal-subtle), var(--chakra-colors-teal-solid));
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-v {
+  color: #042f2e;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.brand-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.header-breadcrumb-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-left: 1px solid var(--chakra-colors-border, #27272a);
+  padding-left: 0.75rem;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.header-project-name {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-weight: 500;
+}
+
+.header-project-sep {
+  color: var(--chakra-colors-border-emphasized, #52525b);
+}
+
+.header-file-name {
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 600;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.viewport-controls {
+  display: flex;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  padding: 2px;
+  gap: 2px;
+}
+
+.vp-btn {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  width: 26px;
+  height: 24px;
+  border-radius: var(--chakra-radii-sm, 0.25rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vp-btn:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+}
+
+.vp-btn.active {
+  background-color: var(--chakra-colors-bg-emphasized, #3f3f46);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Workspace Layout
+   ========================================================================== */
+.app-workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   VS Code Activity Bar
+   ========================================================================== */
+.vscode-activity-bar {
+  width: 48px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-right: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.activity-bar-top,
+.activity-bar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.activity-bar-btn {
+  position: relative;
+  width: 48px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.activity-bar-btn:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.activity-bar-btn.active {
+  color: var(--chakra-colors-teal-fg, #5eead4);
+}
+
+.activity-bar-btn .active-indicator {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background-color: var(--chakra-colors-teal-solid, #14b8a6);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ==========================================================================
+   VS Code File Explorer
+   ========================================================================== */
+.vscode-explorer {
+  width: 240px;
+  min-width: 150px;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.explorer-header {
+  height: 35px;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.explorer-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  text-transform: uppercase;
+}
+
+.explorer-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.section-header {
+  height: 28px;
+  padding: 0 0.5rem 0 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  font-size: 0.71875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.section-caret {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+}
+
+.folder-icon {
+  color: var(--chakra-colors-teal-fg, #14b8a6);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.section-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.section-action-btn:hover {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+}
+
+.file-tree-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.35rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-tree-item {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem 0 1.25rem;
+  gap: 0.45rem;
+  cursor: pointer;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.78125rem;
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.file-tree-item:hover {
+  background-color: var(--chakra-colors-bg-muted, #18181b);
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.file-tree-item.active {
+  background-color: rgba(20, 184, 166, 0.12);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 500;
+}
+
+.file-tree-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--chakra-colors-teal-solid, #14b8a6);
+}
+
+.tree-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-item-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-item-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.file-tree-item:hover .tree-item-actions {
+  display: flex;
+}
+
+.tree-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+
+.tree-action-btn:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+  background-color: var(--chakra-colors-bg-emphasized, #3f3f46);
+}
+
+.tree-action-btn.delete-btn:hover {
+  color: var(--chakra-colors-red-fg, #fca5a5);
+}
+
+.tree-inline-input {
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border: 1px solid var(--chakra-colors-teal-focus-ring, #14b8a6);
+  border-radius: 2px;
+  color: var(--chakra-colors-fg, #fafafa);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  padding: 1px 4px;
+  outline: none;
+  width: 100%;
+}
+
+.inline-rename-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.creating-item {
+  background-color: rgba(20, 184, 166, 0.08);
+}
+
+.inline-input-btn {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.inline-input-btn.cancel {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+}
+
+.inline-input-btn.cancel:hover {
+  color: var(--chakra-colors-red-fg, #fca5a5);
+}
+
+/* ==========================================================================
+   Trimmer / Splitter Gutters (VS Code Resizers)
+   ========================================================================== */
+.trimmer-gutter {
+  position: relative;
+  width: 4px;
+  background-color: var(--chakra-colors-border, #27272a);
+  cursor: col-resize;
+  user-select: none;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+  z-index: 10;
+}
+
+/* Extended invisible hit area for easy grabbing */
+.trimmer-gutter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+  z-index: 20;
+}
+
+.trimmer-gutter:hover,
+.trimmer-gutter.active {
+  background-color: var(--chakra-colors-teal-solid, #14b8a6);
+}
+
+.trimmer-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 28px;
+  background-color: transparent;
+  border-radius: 1px;
+  pointer-events: none;
+  transition: background-color 0.15s ease;
+}
+
+.trimmer-gutter:hover .trimmer-line,
+.trimmer-gutter.active .trimmer-line {
+  background-color: #042f2e;
+}
+
+.is-resizing,
+.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.is-resizing iframe {
+  pointer-events: none !important;
+}
+
+.trimmer-shield-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  cursor: col-resize;
+  background: transparent;
+}
+
+/* ==========================================================================
+   Main Split Workspace (Editor + Preview)
+   ========================================================================== */
+.main-split-container {
+  flex: 1;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.editor-pane-container {
+  height: 100%;
+  min-width: 160px;
+  background-color: var(--chakra-colors-bg, #09090b);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-pane-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chakra Tabs & File System */
+.editor-tabs-bar {
+  height: 38px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-bottom: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  align-items: stretch;
+  user-select: none;
+  overflow: hidden;
+}
+
+.editor-tabs-scroll {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.editor-tabs-scroll::-webkit-scrollbar {
+  height: 2px;
+}
+.editor-tabs-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--chakra-colors-border, #27272a);
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--chakra-colors-border, #27272a);
+  border-bottom: 2px solid transparent;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.78125rem;
+  padding: 0 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tab-item:hover {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.tab-item.active {
+  background-color: var(--chakra-colors-bg, #09090b);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  border-bottom-color: var(--chakra-colors-teal-solid, #14b8a6);
+}
+
+.tab-name {
+  white-space: nowrap;
+}
+
+.tab-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 2px;
+  margin-left: 0.35rem;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.tab-close-btn:hover {
+  opacity: 1;
+  color: var(--chakra-colors-red-fg, #fca5a5);
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+.tab-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  padding: 0 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-add-btn:hover {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+}
+
+.tab-create-input, .tab-rename-input {
+  background: var(--chakra-colors-bg, #09090b);
+  border: 1px solid var(--chakra-colors-teal-focus-ring, #14b8a6);
+  border-radius: 3px;
+  color: var(--chakra-colors-fg, #fafafa);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+  outline: none;
+  width: 110px;
+}
+
+.tab-create-confirm {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+/* Editor Breadcrumbs */
+.editor-breadcrumbs {
+  height: 24px;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  padding: 0 0.85rem;
+  gap: 0.35rem;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.71875rem;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  user-select: none;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.breadcrumb-sep {
+  color: var(--chakra-colors-border-emphasized, #52525b);
+}
+
+.breadcrumb-current {
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  font-weight: 500;
+}
+
+.monaco-host {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--chakra-colors-bg, #09090b);
+}
+
+/* ==========================================================================
+   Preview & Console Pane
+   ========================================================================== */
+.preview-and-console-container {
+  height: 100%;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--chakra-colors-bg, #09090b);
+  overflow: hidden;
+}
+
+.preview-area-fill {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-pane-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-toolbar {
+  height: 40px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-bottom: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+
+.preview-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.preview-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.sandbox-mode {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.71875rem;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-family: var(--chakra-fonts-mono, monospace);
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.preview-canvas-area {
+  flex: 1;
+  background-color: var(--chakra-colors-bg, #09090b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.viewport-container {
+  height: 100%;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport-container.mode-tablet,
+.viewport-container.mode-mobile {
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  border-radius: var(--chakra-radii-xl, 0.75rem);
+  box-shadow: var(--chakra-shadows-xl);
+  overflow: hidden;
+}
+
+.sandbox-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+}
+
+/* Error Alert */
+.compilation-error-overlay {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.error-card {
+  max-width: 540px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border: 1px solid var(--chakra-colors-red-focus-ring, #ef4444);
+  border-radius: var(--chakra-radii-lg, 0.5rem);
+  padding: 1.5rem;
+  box-shadow: var(--chakra-shadows-lg);
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--chakra-colors-red-fg, #fca5a5);
+  margin-bottom: 0.75rem;
+}
+
+.error-header h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.error-details {
+  background-color: var(--chakra-colors-bg, #09090b);
+  color: var(--chakra-colors-fg, #fafafa);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.8125rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-left: 3px solid var(--chakra-colors-red-solid, #dc2626);
+  margin-bottom: 1rem;
+}
+
+.error-tip {
+  font-size: 0.8125rem;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+}
+
+/* ==========================================================================
+   Console Drawer
+   ========================================================================== */
+.console-drawer {
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-top: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  flex-direction: column;
+  transition: height 0.2s ease;
+}
+
+.console-drawer.collapsed {
+  height: 34px;
+}
+
+.console-drawer.open {
+  height: 185px;
+}
+
+.console-header {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  cursor: pointer;
+  user-select: none;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+}
+
+.console-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78125rem;
+  font-weight: 600;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+}
+
+.term-icon { color: var(--chakra-colors-teal-fg, #5eead4); }
+
+.entry-count {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-size: 0.71875rem;
+}
+
+.console-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.console-body {
+  flex: 1;
+  background-color: var(--chakra-colors-bg, #09090b);
+  overflow-y: auto;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.78125rem;
+  padding: 0.5rem 1rem;
+}
+
+.console-body::-webkit-scrollbar {
+  width: 5px;
+}
+.console-body::-webkit-scrollbar-thumb {
+  background-color: var(--chakra-colors-border, #27272a);
+}
+
+.console-empty {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-size: 0.75rem;
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.console-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.console-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.45;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.line-time {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-size: 0.7rem;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.line-badge {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.console-line.level-info {
+  color: #f4f4f5;
+}
+
+.console-line.level-info .line-badge { 
+  color: var(--chakra-colors-teal-fg, #5eead4); 
+}
+
+.console-line.level-warn .line-badge { 
+  color: var(--chakra-colors-yellow-fg, #fde047); 
+}
+
+.console-line.level-error .line-badge { 
+  color: var(--chakra-colors-red-fg, #fca5a5); 
+}
+
+.console-line.level-error {
+  color: var(--chakra-colors-red-fg, #fca5a5);
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+.console-line.level-warn {
+  color: var(--chakra-colors-yellow-fg, #fde047);
+  background-color: rgba(234, 179, 8, 0.08);
+}
+
+.line-text {
+  word-break: break-all;
+  white-space: pre-wrap;
+  color: inherit;
+}
+
+/* ==========================================================================
+   Chakra Modal / Dialogs
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.5rem;
+}
+
+.chakra-modal {
+  width: 100%;
+  max-width: 680px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  border-radius: var(--chakra-radii-xl, 0.75rem);
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  box-shadow: var(--chakra-shadows-2xl);
+  overflow: hidden;
+}
+
+.chakra-modal--concept {
+  max-width: 760px;
+}
+
+.chakra-modal__header {
+  padding: 1.15rem 1.5rem;
+  border-bottom: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chakra-modal__title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.chakra-modal__title h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.chakra-modal__tabs {
+  display: flex;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border-bottom: 1px solid var(--chakra-colors-border, #27272a);
+  padding: 0 1rem;
+}
+
+.chakra-modal__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  font-size: 0.8125rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chakra-modal__tab:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.chakra-modal__tab.active {
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  border-bottom-color: var(--chakra-colors-teal-solid, #14b8a6);
+  font-weight: 600;
+}
+
+.chakra-modal__body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-desc {
+  font-size: 0.85rem;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.export-preview {
+  background-color: var(--chakra-colors-bg, #09090b);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  padding: 1rem;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--chakra-colors-fg, #fafafa);
+  max-height: 280px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.chakra-modal__footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+}
+
+.modal-title-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+/* ==========================================================================
+   VS Code Status Bar
+   ========================================================================== */
+.vscode-status-bar {
+  height: 24px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-top: 1px solid var(--chakra-colors-border, #27272a);
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  user-select: none;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.status-bar-left,
+.status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.status-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: default;
+  padding: 0 0.35rem;
+  height: 24px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.status-bar-item:hover {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.status-live {
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 600;
+}
+
+.status-ok {
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+}
+
+.status-err {
+  color: var(--chakra-colors-red-fg, #fca5a5);
+  font-weight: 600;
+}
+
+.status-lang {
+  color: var(--chakra-colors-fg, #fafafa);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Preview Toolbar Mode Tabs
+   ========================================================================== */
+.preview-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.preview-mode-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--chakra-radii-md, 0.375rem);
+  font-size: 0.78125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-mode-tab:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+}
+
+.preview-mode-tab.active {
+  background-color: var(--chakra-colors-bg, #09090b);
+  border-color: var(--chakra-colors-border, #27272a);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   AST Viewer Styles
+   ========================================================================== */
+.ast-viewer-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--chakra-colors-bg, #09090b);
+  overflow: hidden;
+  height: calc(100% - 40px);
+}
+
+.ast-header-bar {
+  height: 38px;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border-bottom: 1px solid var(--chakra-colors-border, #27272a);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+  gap: 0.5rem;
+}
+
+.ast-file-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+}
+
+.ast-file-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ast-file-tab:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+}
+
+.ast-file-tab.active {
+  background-color: var(--chakra-colors-bg, #09090b);
+  border-color: var(--chakra-colors-border, #27272a);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 600;
+}
+
+.ast-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.ast-parser-badge {
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.6875rem;
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  border: 1px solid var(--chakra-colors-border, #3f3f46);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.ast-view-toggle {
+  display: flex;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  border-radius: 4px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-size: 0.71875rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggle-btn:hover {
+  color: var(--chakra-colors-fg, #fafafa);
+}
+
+.toggle-btn.active {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 600;
+}
+
+.ast-content-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.ast-tree-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ast-search-row {
+  margin-bottom: 0.5rem;
+}
+
+.ast-search-input {
+  width: 100%;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  border-radius: 4px;
+  padding: 0.35rem 0.65rem;
+  color: var(--chakra-colors-fg, #fafafa);
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.ast-search-input:focus {
+  border-color: var(--chakra-colors-teal-focus-ring, #14b8a6);
+}
+
+.ast-tree-root {
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.tree-branch {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-branch-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.tree-branch-header:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.caret-btn {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+}
+
+.node-key {
+  color: var(--chakra-colors-fg-muted, #a1a1aa);
+}
+
+.node-type-badge {
+  color: var(--chakra-colors-teal-fg, #5eead4);
+  font-weight: 600;
+  background-color: rgba(20, 184, 166, 0.1);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.node-collapsed-summary {
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-size: 0.7rem;
+}
+
+.tree-leaf {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1px 4px 1px 18px;
+}
+
+.val-str { color: #86efac; }
+.val-num { color: #fde047; }
+.val-bool { color: #c084fc; }
+.val-null, .val-undefined { color: #71717a; font-style: italic; }
+
+.filter-dim {
+  opacity: 0.3;
+}
+
+.ast-json-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.ast-json-code {
+  margin: 0;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.78125rem;
+  color: #fafafa;
+  line-height: 1.5;
+}
+
+.ast-error-overlay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.ast-error-box {
+  max-width: 520px;
+  width: 100%;
+  background-color: var(--chakra-colors-bg-subtle, #18181b);
+  border: 1px solid var(--chakra-colors-red-focus-ring, #ef4444);
+  border-radius: var(--chakra-radii-lg, 0.5rem);
+  padding: 1.25rem;
+}
+
+.error-loc {
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--chakra-colors-red-fg, #fca5a5);
+}
+
+/* ==========================================================================
+   Student Exercise AST Slots & Monaco Wrapper Styles
+   ========================================================================== */
+
+/* Breadcrumbs left/right layout */
+.editor-breadcrumbs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.85rem;
+}
+
+.breadcrumbs-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.breadcrumbs-right {
+  display: flex;
+  align-items: center;
+}
+
+.student-mode-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2px 8px;
+  background-color: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  border-radius: 4px;
+  font-size: 0.71875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.student-mode-toggle-btn:hover {
+  background-color: rgba(20, 184, 166, 0.18);
+  border-color: #14b8a6;
+}
+
+.student-mode-toggle-btn.active {
+  background-color: #14b8a6;
+  color: #042f2e;
+  font-weight: 600;
+  border-color: #14b8a6;
+}
+
+/* Monaco in-editor highlight decoration for AST slots */
+.student-slot-editor-highlight {
+  background-color: rgba(20, 184, 166, 0.16) !important;
+  border-bottom: 2px dashed #14b8a6 !important;
+  border-radius: 2px;
+}
+
+/* Student Editor Drawer */
+.student-editor-drawer {
+  background-color: #121215;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  position: relative;
+}
+
+.student-slot-panel {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slot-panel-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.slot-panel-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slot-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slot-panel-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.slot-panel-subtitle {
+  font-size: 0.72rem;
+  color: #a1a1aa;
+}
+
+.slot-panel-status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.slot-progress-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: #27272a;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  color: #e4e4e7;
+}
+
+.slot-ast-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.slot-ast-pill.valid {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.slot-ast-pill.invalid {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.slot-add-template-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2px 8px;
+  background-color: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #d4d4d8;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.slot-add-template-btn:hover {
+  background-color: #3f3f46;
+  color: #fafafa;
+}
+
+.slot-ast-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: #fca5a5;
+}
+
+.slot-ast-error-banner .banner-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #ef4444;
+}
+
+.slot-ast-error-banner .banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Slot Cards Container */
+.slot-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.65rem;
+}
+
+.student-slot-card {
+  background-color: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.student-slot-card:hover {
+  border-color: #3f3f46;
+}
+
+.student-slot-card:focus-within {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 1px #14b8a6;
+}
+
+.slot-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slot-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.slot-number-badge {
+  font-size: 0.68rem;
+  color: #71717a;
+  font-weight: 700;
+}
+
+.slot-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.slot-id-tag {
+  background-color: #27272a;
+  color: #a1a1aa;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-family: monospace;
+}
+
+.slot-meta-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.slot-parser-badge {
+  background-color: rgba(20, 184, 166, 0.12);
+  color: #14b8a6;
+  font-size: 0.68rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.slot-jump-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background-color: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #a1a1aa;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.slot-jump-btn:hover {
+  background-color: #3f3f46;
+  color: #fafafa;
+}
+
+.slot-input-wrap {
+  width: 100%;
+}
+
+.slot-custom-input,
+.slot-custom-textarea {
+  width: 100%;
+  background-color: #09090b;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #5eead4;
+  font-family: var(--chakra-fonts-mono, monospace);
+  font-size: 0.82rem;
+  padding: 0.4rem 0.55rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.slot-custom-input:focus,
+.slot-custom-textarea:focus {
+  border-color: #14b8a6;
+  background-color: #0c0c0e;
+}
+
+.slot-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.slot-placeholder-hint {
+  color: #71717a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.slot-placeholder-hint code {
+  color: #a1a1aa;
+}
+
+.slot-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.slot-status-pill.ok {
+  color: #4ade80;
+}
+
+.slot-status-pill.empty {
+  color: #f59e0b;
+}
+
+.slot-empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: #18181b;
+  border: 1px dashed #27272a;
+  border-radius: 6px;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.slot-empty-state h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #fafafa;
+}
+
+.slot-empty-state p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #a1a1aa;
+  max-width: 480px;
+}
+
+.slot-sample-snippet {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.85rem;
+  background-color: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #5eead4;
+  text-align: left;
+}
+
+/* ==========================================================================
+   SoloLearn Task Panel Styles (VS Code Sidebar Theme)
+   ========================================================================== */
+.task-panel-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border-right: none;
+  flex-shrink: 0;
+  user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.task-panel-header {
+  height: 35px;
+  padding: 0 0.75rem 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.task-panel-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  text-transform: uppercase;
+}
+
+.task-add-btn {
+  background: transparent;
+  border: none;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.task-add-btn:hover {
+  background-color: var(--chakra-colors-bg-muted, #27272a);
+  color: var(--chakra-colors-teal-fg, #5eead4);
+}
+
+.task-panel-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+}
+
+/* Custom Scrollbar for task-panel */
+.task-panel-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+.task-panel-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.task-panel-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+.task-panel-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.task-selector-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.task-selector-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--chakra-colors-fg-subtle, #71717a);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.task-selector-select {
+  background-color: var(--chakra-colors-bg-muted, #18181b);
+  color: var(--chakra-colors-fg, #fafafa);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  padding: 0.45rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.task-selector-select:focus {
+  border-color: var(--chakra-colors-teal-solid, #14b8a6);
+}
+
+/* Custom Task Creation Form */
+.task-custom-create-box {
+  background-color: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.custom-create-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.close-create-btn {
+  background: transparent;
+  border: none;
+  color: #71717a;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.close-create-btn:hover {
+  color: #fafafa;
+  background-color: #27272a;
+}
+
+.custom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.custom-field label {
+  font-size: 0.68rem;
+  color: #a1a1aa;
+}
+
+.custom-field input,
+.custom-field select,
+.custom-field textarea {
+  background-color: #09090b;
+  border: 1px solid #27272a;
+  color: #fafafa;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.custom-field input:focus,
+.custom-field select:focus,
+.custom-field textarea:focus {
+  border-color: #14b8a6;
+}
+
+.save-custom-task-btn {
+  background-color: #14b8a6;
+  color: #042f2e;
+  border: none;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 0.25rem;
+  transition: filter 0.15s;
+}
+
+.save-custom-task-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* Main Task Card */
+.task-card {
+  background-color: #141416;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  box-sizing: border-box;
+}
+
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.task-category-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #5eead4;
+  border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+.task-target-file-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: #1e1e24;
+  border: 1px solid #3f3f46;
+  color: #38bdf8;
+  font-family: monospace;
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.task-target-file-pill:hover {
+  background-color: #0369a1;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+.task-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f4f4f5;
+  line-height: 1.35;
+}
+
+.task-description {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #a1a1aa;
+  line-height: 1.45;
+}
+
+/* Criteria Section */
+.task-criteria-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.criteria-heading {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.criterion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  background-color: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.criterion-item.passed {
+  border-color: rgba(34, 197, 94, 0.35);
+  background-color: rgba(34, 197, 94, 0.08);
+}
+
+.criterion-item.failed {
+  border-color: rgba(239, 68, 68, 0.4);
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+.criterion-item.pending {
+  border-color: #27272a;
+}
+
+.criterion-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.criterion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.criterion-desc {
+  font-size: 0.75rem;
+  color: #e4e4e7;
+  line-height: 1.35;
+}
+
+.criterion-item.passed .criterion-desc {
+  color: #86efac;
+}
+
+.criterion-item.failed .criterion-desc {
+  color: #fca5a5;
+}
+
+.criterion-error-msg {
+  font-size: 0.7rem;
+  color: #f87171;
+  font-family: monospace;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* AST Syntax Error Box */
+.task-ast-syntax-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.5rem;
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid #dc2626;
+  border-radius: 4px;
+  color: #fca5a5;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.syntax-err-icon {
+  flex-shrink: 0;
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+.syntax-err-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Hint Box */
+.task-hint-box {
+  background-color: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.task-hint-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  background: transparent;
+  border: none;
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.task-hint-toggle:hover {
+  background-color: rgba(245, 158, 11, 0.12);
+}
+
+.task-hint-content {
+  padding: 0.45rem 0.55rem;
+  border-top: 1px solid rgba(245, 158, 11, 0.15);
+  font-size: 0.73rem;
+  color: #fef3c7;
+  line-height: 1.4;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Actions Box & Buttons */
+.task-actions-box {
+  margin-top: 0.2rem;
+}
+
+.run-validation-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.55rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #14b8a6;
+  background-color: #14b8a6;
+  color: #042f2e;
+  transition: all 0.15s ease;
+}
+
+.run-validation-btn:hover {
+  background-color: #2dd4bf;
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.3);
+}
+
+.task-success-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  background-color: rgba(34, 197, 94, 0.12);
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  color: #86efac;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  align-items: center;
+}
+
+.next-task-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background-color: #22c55e;
+  color: #052e16;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s;
+  width: 100%;
+}
+
+.next-task-btn:hover {
+  filter: brightness(1.15);
+}
+
+/* ==========================================================================
+   Project URL Sharing & fflate Compression Metrics Styles
+   ========================================================================== */
+.share-url-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.share-url-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.share-url-input {
+  flex: 1;
+  background-color: var(--chakra-colors-bg, #09090b);
+  border: 1px solid var(--chakra-colors-border, #27272a);
+  color: var(--chakra-colors-fg, #fafafa);
+  font-family: monospace;
+  font-size: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 4px;
+  outline: none;
+  cursor: text;
+}
+
+.share-url-input:focus {
+  border-color: var(--chakra-colors-teal-solid, #14b8a6);
+}
+
+.share-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.share-metric-card {
+  background-color: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.metric-label {
+  font-size: 0.65rem;
+  color: #71717a;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.metric-val {
+  font-size: 0.85rem;
+  color: #5eead4;
+  font-family: monospace;
+}
+
+.share-status-block {
+  margin-top: 0.2rem;
+}
+
+.share-badge-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.share-badge-notice.safe {
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #bbf7d0;
+}
+
+.share-badge-notice.warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fde68a;
+}
+
+.share-badge-notice.danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.share-table-guide {
+  background-color: #121214;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.guide-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.guide-table th {
+  text-align: left;
+  padding: 0.35rem 0.45rem;
+  border-bottom: 1px solid #27272a;
+  color: #71717a;
+  font-weight: 600;
+}
+
+.guide-table td {
+  padding: 0.35rem 0.45rem;
+  border-bottom: 1px solid #1f1f23;
+  color: #d4d4d8;
+}
+
+.guide-table tr.row-active td {
+  color: #5eead4;
+  font-weight: 600;
+  background-color: rgba(20, 184, 166, 0.08);
+}
+
+/* ==========================================================================
+   Monaco Inline Slot Widgets: Умный тренажер синтаксиса
+   ========================================================================== */
+.breadcrumbs-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.template-load-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: rgba(20, 184, 166, 0.12);
+  border: 1px solid rgba(20, 184, 166, 0.35);
+  color: #5eead4;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+
+.template-load-pill-btn:hover {
+  background-color: rgba(20, 184, 166, 0.25);
+  border-color: #14b8a6;
+  color: #ffffff;
+}
+
+/* Base widget container inside Monaco line */
+.monaco-inline-slot-widget {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  background-color: rgba(24, 24, 27, 0.95);
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: 0 2px;
+  z-index: 50;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  user-select: none;
+}
+
+.monaco-inline-slot-widget:hover {
+  border-color: #14b8a6;
+}
+
+/* Chips list */
+.slot-chips-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.slot-badge-label {
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: #a1a1aa;
+  padding-right: 2px;
+}
+
+.slot-chip-btn {
+  background-color: #27272a;
+  border: 1px solid #3f3f46;
+  color: #f4f4f5;
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  line-height: 1.2;
+}
+
+.slot-chip-btn:hover {
+  background-color: #14b8a6;
+  border-color: #14b8a6;
+  color: #042f2e;
+  font-weight: 600;
+  box-shadow: 0 0 6px rgba(20, 184, 166, 0.4);
+}
+
+/* Select dropdown */
+.slot-select-input {
+  background-color: #18181b;
+  border: 1px solid #3f3f46;
+  color: #5eead4;
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+
+.slot-select-input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 5px rgba(20, 184, 166, 0.4);
+}
+
+.slot-select-input option {
+  background-color: #18181b;
+  color: #fafafa;
+}
+
+/* Manual input with confirm button */
+.slot-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.slot-text-input {
+  background-color: #121214;
+  border: 1px solid #3f3f46;
+  color: #fafafa;
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  outline: none;
+  width: 130px;
+}
+
+.slot-text-input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 5px rgba(20, 184, 166, 0.4);
+}
+
+.slot-input-confirm-btn {
+  background-color: #14b8a6;
+  border: none;
+  color: #042f2e;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.slot-input-confirm-btn:hover {
+  opacity: 0.9;
+}
+
