@@ -4,12 +4,23 @@ import {
   Palette,
   Cpu,
   FileText,
+  GraduationCap,
 } from 'lucide-preact';
 
 /**
  * Возвращает соответствующую иконку Lucide в зависимости от расширения файла
  */
 export function getFileIcon(fileName: string, size = 14) {
+  const lower = fileName.toLowerCase();
+  if (
+    lower === 'task.json' ||
+    lower === 'tasks.json' ||
+    lower === 'sololearn.json' ||
+    lower.endsWith('.task.json') ||
+    lower.endsWith('.sololearn.json')
+  ) {
+    return <GraduationCap size={size} color="var(--chakra-colors-teal-fg, #14b8a6)" />;
+  }
   if (fileName.endsWith('.eta') || fileName.endsWith('.html')) {
     return <FileCode size={size} color="var(--chakra-colors-teal-fg, #14b8a6)" />;
   }

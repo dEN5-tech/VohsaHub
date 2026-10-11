@@ -1,10 +1,11 @@
-import { ChevronDown, ChevronRight, FolderOpen, FilePlus } from 'lucide-preact';
+import { ChevronDown, ChevronRight, FolderOpen, FilePlus, GraduationCap } from 'lucide-preact';
 import type { ExplorerHeaderProps } from './types';
 
 export function ExplorerSection({
   isOpen,
   onToggle,
   onStartCreate,
+  onCreateTaskFile,
 }: ExplorerHeaderProps) {
   return (
     <div
@@ -22,6 +23,15 @@ export function ExplorerSection({
       </div>
 
       <div class="section-actions" onClick={(e) => e.stopPropagation()}>
+        {onCreateTaskFile && (
+          <button
+            class="section-action-btn"
+            onClick={onCreateTaskFile}
+            title="Создать task.json (SoloLearn урок)"
+          >
+            <GraduationCap size={14} color="#14b8a6" />
+          </button>
+        )}
         <button
           class="section-action-btn"
           onClick={onStartCreate}

@@ -224,6 +224,14 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
     autoEscape: false,
   });
 
+  // Если файлов в проекте нет (чистый пустой редактор)
+  if (files.length === 0) {
+    return {
+      success: true,
+      html: '',
+    };
+  }
+
   // 1. Находим входной HTML файл (index.html)
   let entryTemplateFile = files.find((f) => f.name === 'index.html' || f.name === 'template.html' || f.name === 'index.eta');
   if (!entryTemplateFile) {
@@ -239,7 +247,11 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
   }
 
   // 2. Парсим data.json (если есть)
-  const jsonFile = files.find((f) => f.name === 'data.json') || files.find((f) => f.name.endsWith('.json'));
+  const isTaskFile = (n: string) => {
+    const l = n.toLowerCase();
+    return l === 'task.json' || l === 'tasks.json' || l === 'sololearn.json' || l.endsWith('.task.json') || l.endsWith('.sololearn.json');
+  };
+  const jsonFile = files.find((f) => f.name === 'data.json') || files.find((f) => f.name.endsWith('.json') && !isTaskFile(f.name));
   let parsedData: any = {};
   if (jsonFile && jsonFile.content.trim()) {
     try {

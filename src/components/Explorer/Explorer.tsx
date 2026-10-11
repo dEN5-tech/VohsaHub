@@ -12,6 +12,7 @@ export function Explorer({
   onCreateFile,
   onDeleteFile,
   onRenameFile,
+  onCreateTaskFile,
 }: ExplorerProps) {
   const [isSectionOpen, setIsSectionOpen] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -72,6 +73,7 @@ export function Explorer({
           isOpen={isSectionOpen}
           onToggle={() => setIsSectionOpen((prev) => !prev)}
           onStartCreate={handleStartCreate}
+          onCreateTaskFile={onCreateTaskFile}
         />
 
         {isSectionOpen && (

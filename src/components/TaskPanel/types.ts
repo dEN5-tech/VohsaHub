@@ -11,4 +11,10 @@ export interface TaskPanelProps {
   onAddTask: (newTask: LearningTask) => void;
   onValidateTask: (task: LearningTask) => TaskValidationResult;
   lastValidationResult: TaskValidationResult | null;
+  // VFS SoloLearn интеграция
+  vfsTaskFileName?: string;
+  vfsTaskError?: string;
+  onOpenTaskFile?: (fileName: string) => void;
+  onCreateTaskFile?: () => void;
+  onSyncTasksToVfs?: () => void;
 }

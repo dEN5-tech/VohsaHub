@@ -70,12 +70,27 @@ export function PreviewPane({
           style={{ width: getViewportWidth() }}
         >
           {compilationResult.success ? (
-            <iframe
-              ref={iframeRef}
-              title={`Preview - ${snippetTitle}`}
-              class="sandbox-iframe"
-              sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
-            />
+            compilationResult.html ? (
+              <iframe
+                ref={iframeRef}
+                title={`Preview - ${snippetTitle}`}
+                class="sandbox-iframe"
+                sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
+              />
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: '#71717a',
+                  fontSize: '0.85rem',
+                }}
+              >
+                Ожидание файлов проекта...
+              </div>
+            )
           ) : (
             <div class="compilation-error-overlay">
               <div class="error-card">

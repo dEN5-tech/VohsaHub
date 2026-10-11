@@ -8,6 +8,7 @@ export interface ExplorerProps {
   onCreateFile: (fileName: string) => void;
   onDeleteFile: (fileName: string) => void;
   onRenameFile: (oldName: string, newName: string) => void;
+  onCreateTaskFile?: () => void;
 }
 
 export interface FileTreeItemProps {
@@ -34,4 +35,5 @@ export interface ExplorerHeaderProps {
   isOpen: boolean;
   onToggle: () => void;
   onStartCreate: () => void;
+  onCreateTaskFile?: () => void;
 }

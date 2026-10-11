@@ -6,6 +6,7 @@ interface ActivityBarProps {
   isConsoleOpen: boolean;
   onToggleConsole: () => void;
   onReset: () => void;
+  hasTasksBadge?: boolean;
 }
 
 export function ActivityBar({
@@ -14,6 +15,7 @@ export function ActivityBar({
   isConsoleOpen,
   onToggleConsole,
   onReset,
+  hasTasksBadge,
 }: ActivityBarProps) {
   return (
     <div class="vscode-activity-bar">
@@ -31,8 +33,23 @@ export function ActivityBar({
           class={`activity-bar-btn ${activeSidebarTab === 'tasks' ? 'active' : ''}`}
           onClick={() => onSelectSidebarTab('tasks')}
           title="Практические задания и тесты (SoloLearn)"
+          style={{ position: 'relative' }}
         >
           <GraduationCap size={20} />
+          {hasTasksBadge && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '8px',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#14b8a6',
+                boxShadow: '0 0 6px #14b8a6',
+              }}
+            />
+          )}
           {activeSidebarTab === 'tasks' && <span class="active-indicator" />}
         </button>
 

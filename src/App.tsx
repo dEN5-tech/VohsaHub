@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect, useMemo } from 'preact/hooks';
 import {
   useFileManager,
   useResizablePanels,
@@ -16,31 +16,25 @@ import { ConsoleDrawer } from './components/ConsoleDrawer';
 import { StatusBar } from './components/StatusBar';
 import { ExportModal } from './components/ExportModal';
 
-import { DEFAULT_LEARNING_TASKS } from './data/learningCurriculum';
-import { validateLearningTask } from './compiler/astTaskValidator';
+import {
+  validateLearningTask,
+  parseTasksFromVfs,
+  isVfsTaskFile,
+  DEFAULT_SOLOLEARN_TEMPLATE_JSON,
+} from './compiler/astTaskValidator';
 import type { LearningTask, TaskValidationResult } from './types/learningTasks';
 
 /**
  * Главный корневой компонент рабочей среды VohsaHub
  */
 export function App() {
-  // 1. Состояние UI окружения
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'explorer' | 'tasks' | null>('tasks');
+  // 1. Модуль управления виртуальной файловой системой и компиляцией
   const [autoCompile, setAutoCompile] = useState<boolean>(true);
-  const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
-  const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
-
-  // 1.1 Состояние учебных практических задач (SoloLearn режим)
-  const [tasks, setTasks] = useState<LearningTask[]>(DEFAULT_LEARNING_TASKS);
-  const [activeTaskId, setActiveTaskId] = useState<string>(DEFAULT_LEARNING_TASKS[0]?.id || '');
-  const [lastValidationResult, setLastValidationResult] = useState<TaskValidationResult | null>(null);
-
-  // 2. Модуль управления виртуальной файловой системой и компиляцией
   const {
     files,
     activeFileName,
     compilationResult,
+    isLoadedFromUrl,
     setActiveFileName,
     triggerCompile,
     handleFileChange,
@@ -49,6 +43,65 @@ export function App() {
     handleRenameFile,
     handleReset: resetFiles,
   } = useFileManager({ autoCompile });
+
+  // 1.1 Динамическое извлечение SoloLearn задач из файлов виртуальной файловой системы (task.json / tasks.json)
+  const vfsTasksData = useMemo(() => {
+    return parseTasksFromVfs(files);
+  }, [files]);
+
+  // Список задач: если в VFS есть task.json, используем его, иначе пустой список
+  const tasks = useMemo(() => {
+    if (vfsTasksData && vfsTasksData.tasks.length > 0) {
+      return vfsTasksData.tasks;
+    }
+    return [];
+  }, [vfsTasksData]);
+
+  const [activeTaskId, setActiveTaskId] = useState<string>('');
+  const [lastValidationResult, setLastValidationResult] = useState<TaskValidationResult | null>(null);
+
+  // 1.2 Состояние UI окружения: по умолчанию 'explorer' (или null если нет задач), но при загрузке по URL с задачами открываем 'tasks'
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'explorer' | 'tasks' | null>(() => {
+    if (typeof window !== 'undefined' && (window.location.hash.includes('project=') || window.location.href.includes('boost'))) {
+      return 'tasks';
+    }
+    return 'explorer';
+  });
+
+  const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
+
+  // При изменении списка задач или загрузке по URL синхронизируем активную задачу
+  useEffect(() => {
+    if (tasks.length > 0) {
+      if (!activeTaskId || !tasks.some((t) => t.id === activeTaskId)) {
+        setActiveTaskId(tasks[0].id);
+      }
+      // Если проект загружен по URL со ссылкой или открыт task.json, открываем валидацию
+      if (isLoadedFromUrl) {
+        setActiveSidebarTab('tasks');
+      }
+    } else {
+      setActiveTaskId('');
+      setLastValidationResult(null);
+    }
+  }, [tasks, isLoadedFromUrl]);
+
+  // Функция быстрого создания файла урока task.json в виртуальной файловой системе
+  const handleCreateTaskFile = () => {
+    const existing = files.find((f) => isVfsTaskFile(f.name));
+    if (existing) {
+      setActiveFileName(existing.name);
+      setActiveSidebarTab('tasks');
+      return;
+    }
+    const name = 'task.json';
+    handleCreateFile(name);
+    handleFileChange(name, DEFAULT_SOLOLEARN_TEMPLATE_JSON);
+    setActiveFileName(name);
+    setActiveSidebarTab('tasks');
+  };
 
   // 3. Модуль ресайзинга панелей (Explorer и Editor/Preview Split)
   const {
@@ -98,7 +151,50 @@ export function App() {
   };
 
   const handleAddTask = (newTask: LearningTask) => {
-    setTasks((prev) => [...prev, newTask]);
+    // Сохраняем задачу прямо в task.json виртуальной файловой системы!
+    const taskFileName = vfsTasksData?.sourceFileName || 'task.json';
+    const existingFile = files.find((f) => f.name === taskFileName);
+    
+    let currentPayload: any = { tasks: [] };
+    if (existingFile && existingFile.content.trim()) {
+      try {
+        const parsed = JSON.parse(existingFile.content);
+        if (Array.isArray(parsed)) {
+          currentPayload = { tasks: parsed };
+        } else if (parsed && Array.isArray(parsed.tasks)) {
+          currentPayload = parsed;
+        }
+      } catch (e) {
+        currentPayload = { tasks: [] };
+      }
+    }
+
+    const updatedTasks = [...currentPayload.tasks, {
+      id: newTask.id,
+      title: newTask.title,
+      category: newTask.category,
+      targetFile: newTask.targetFile,
+      description: newTask.description,
+      criteria: newTask.criteria.map((c) => ({
+        id: c.id,
+        description: c.description,
+        contains: c.contains,
+        notContains: c.notContains,
+        regex: c.regex,
+        selector: c.selector,
+        expression: c.expression,
+      })),
+    }];
+
+    const newJson = JSON.stringify({ tasks: updatedTasks }, null, 2);
+
+    if (existingFile) {
+      handleFileChange(taskFileName, newJson);
+    } else {
+      handleCreateFile(taskFileName);
+      handleFileChange(taskFileName, newJson);
+    }
+
     setActiveTaskId(newTask.id);
     if (newTask.targetFile) {
       setActiveFileName(newTask.targetFile);
@@ -126,6 +222,7 @@ export function App() {
           isConsoleOpen={isConsoleOpen}
           onToggleConsole={() => setIsConsoleOpen((v) => !v)}
           onReset={handleFullReset}
+          hasTasksBadge={tasks.length > 0}
         />
 
         {activeSidebarTab === 'explorer' && (
@@ -138,6 +235,7 @@ export function App() {
               onCreateFile={handleCreateFile}
               onDeleteFile={handleDeleteFile}
               onRenameFile={handleRenameFile}
+              onCreateTaskFile={handleCreateTaskFile}
             />
             <div
               class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}
@@ -162,6 +260,12 @@ export function App() {
               onAddTask={handleAddTask}
               onValidateTask={handleValidateTask}
               lastValidationResult={lastValidationResult}
+              vfsTaskFileName={vfsTasksData?.sourceFileName}
+              vfsTaskError={vfsTasksData?.parseError}
+              onOpenTaskFile={(name) => {
+                setActiveFileName(name);
+              }}
+              onCreateTaskFile={handleCreateTaskFile}
             />
             <div
               class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}

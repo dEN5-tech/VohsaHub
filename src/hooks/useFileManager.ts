@@ -11,6 +11,7 @@ export interface UseFileManagerReturn {
   files: VirtualFile[];
   activeFileName: string;
   compilationResult: CompilationResult;
+  isLoadedFromUrl: boolean;
   setActiveFileName: (name: string) => void;
   triggerCompile: (currentFiles?: VirtualFile[]) => void;
   handleFileChange: (fileName: string, content: string) => void;
@@ -23,11 +24,15 @@ export interface UseFileManagerReturn {
 export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileManagerReturn {
   // Проверяем, есть ли сжатый проект в URL хеше (#project=...)
   const initialSharedProject = typeof window !== 'undefined' ? decompressProjectFromUrl() : null;
-  const initialFilesList = initialSharedProject?.files || INITIAL_FILES;
+  const initialFilesList = initialSharedProject?.files || [];
 
   const [files, setFiles] = useState<VirtualFile[]>(initialFilesList);
-  const [activeFileName, setActiveFileName] = useState<string>(initialFilesList[0]?.name || 'index.html');
+  const [activeFileName, setActiveFileName] = useState<string>(initialFilesList[0]?.name || '');
   const [compilationResult, setCompilationResult] = useState<CompilationResult>({ success: true });
+  const [isLoadedFromUrl, setIsLoadedFromUrl] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return Boolean(initialSharedProject) || window.location.hash.includes('project=') || window.location.href.includes('boost');
+  });
 
   const filesRef = useRef<VirtualFile[]>(files);
   const activeFileNameRef = useRef<string>(activeFileName);
@@ -54,6 +59,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
     const handleHashChange = () => {
       const shared = decompressProjectFromUrl();
       if (shared && shared.files.length > 0) {
+        setIsLoadedFromUrl(true);
         filesRef.current = shared.files;
         setFiles(shared.files);
         setActiveFileName(shared.files[0]?.name || 'index.html');
@@ -125,6 +131,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
   }, [triggerCompile]);
 
   const handleReset = useCallback(() => {
+    setIsLoadedFromUrl(false);
     const defaultFiles = INITIAL_FILES.map((f) => ({ ...f }));
     filesRef.current = defaultFiles;
     setFiles(defaultFiles);
@@ -136,6 +143,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
     files,
     activeFileName,
     compilationResult,
+    isLoadedFromUrl,
     setActiveFileName,
     triggerCompile,
     handleFileChange,

@@ -8,6 +8,8 @@ import {
   PlusCircle,
   X,
   AlertTriangle,
+  FileJson,
+  Edit3,
 } from 'lucide-preact';
 import type { TaskPanelProps } from './types';
 import type { LearningTask } from '../../types/learningTasks';
@@ -22,6 +24,11 @@ export function TaskPanel({
   onAddTask,
   onValidateTask,
   lastValidationResult,
+  vfsTaskFileName,
+  vfsTaskError,
+  onOpenTaskFile,
+  onCreateTaskFile,
+  onSyncTasksToVfs,
 }: TaskPanelProps) {
   const currentTask = tasks.find((t) => t.id === activeTaskId) || tasks[0];
   const [isCreatingCustomTask, setIsCreatingCustomTask] = useState(false);
@@ -60,12 +67,7 @@ export function TaskPanel({
         {
           id: 'custom-req-1',
           description: newRequirement.trim() || 'Код в файле успешно обновлен',
-          check: (code) => {
-            if (code.trim().length > 5) {
-              return { passed: true, message: 'Код успешно написан' };
-            }
-            return { passed: false, message: 'Файл пуст или не содержит кода' };
-          },
+          expression: 'code.trim().length > 5',
         },
       ],
     };
@@ -91,36 +93,153 @@ export function TaskPanel({
           <GraduationCap size={16} color="#14b8a6" />
           <span>ЦЕЛЬ УРОКА</span>
         </div>
-        <button
-          class="task-add-btn"
-          onClick={() => setIsCreatingCustomTask((v) => !v)}
-          title="Добавить задание с любым целевым файлом"
-        >
-          <PlusCircle size={14} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {vfsTaskFileName ? (
+            <button
+              class="task-add-btn"
+              onClick={() => onOpenTaskFile?.(vfsTaskFileName)}
+              title={`Редактировать ${vfsTaskFileName} в коде`}
+            >
+              <Edit3 size={13} color="#5eead4" />
+            </button>
+          ) : (
+            <button
+              class="task-add-btn"
+              onClick={() => onCreateTaskFile?.()}
+              title="Создать task.json в файловой системе"
+            >
+              <FileJson size={13} color="#5eead4" />
+            </button>
+          )}
+          <button
+            class="task-add-btn"
+            onClick={() => setIsCreatingCustomTask((v) => !v)}
+            title="Добавить задание с любым целевым файлом"
+          >
+            <PlusCircle size={14} />
+          </button>
+        </div>
       </div>
 
+      {/* VFS Task file status / quick actions */}
+      {vfsTaskFileName ? (
+        <div
+          style={{
+            padding: '6px 12px',
+            backgroundColor: 'rgba(20, 184, 166, 0.08)',
+            borderBottom: '1px solid rgba(20, 184, 166, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.75rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#5eead4' }}>
+            <FileJson size={13} />
+            <span>Источник: <strong>{vfsTaskFileName}</strong></span>
+          </div>
+          <button
+            class="chakra-button chakra-button--ghost chakra-button--xs"
+            onClick={() => onOpenTaskFile?.(vfsTaskFileName)}
+            style={{ fontSize: '0.7rem', padding: '2px 6px', height: 'auto', color: '#5eead4' }}
+            title="Открыть файл конфигурации уроков в Monaco"
+          >
+            Редактировать
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: '8px 12px',
+            backgroundColor: 'rgba(39, 39, 42, 0.5)',
+            borderBottom: '1px solid rgba(63, 63, 70, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.75rem',
+          }}
+        >
+          <span style={{ color: '#a1a1aa' }}>SoloLearn в ФС:</span>
+          <button
+            class="chakra-button chakra-button--teal chakra-button--xs"
+            onClick={() => onCreateTaskFile?.()}
+            style={{ fontSize: '0.7rem', padding: '2px 8px', height: '22px' }}
+            title="Создать task.json в виртуальной файловой системе и редактировать уроки в Monaco"
+          >
+            + Создать task.json
+          </button>
+        </div>
+      )}
+
+      {vfsTaskError && (
+        <div
+          style={{
+            padding: '8px 12px',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#f87171',
+            fontSize: '0.75rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '6px',
+          }}
+        >
+          <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <span>{vfsTaskError}</span>
+        </div>
+      )}
+
       <div class="task-panel-scrollable">
-        {/* Task Selector Dropdown */}
-        <div class="task-selector-wrapper">
-          <label class="task-selector-label">Выберите урок:</label>
-          <select
-            class="task-selector-select"
-            value={currentTask?.id}
-            onChange={(e) => {
-              const nextId = (e.target as HTMLSelectElement).value;
-              onSelectTask(nextId);
-              const found = tasks.find((t) => t.id === nextId);
-              if (found) onSelectFile(found.targetFile);
+        {/* Task Selector Dropdown (если есть задачи) */}
+        {tasks.length > 0 ? (
+          <div class="task-selector-wrapper">
+            <label class="task-selector-label">Выберите урок:</label>
+            <select
+              class="task-selector-select"
+              value={currentTask?.id}
+              onChange={(e) => {
+                const nextId = (e.target as HTMLSelectElement).value;
+                onSelectTask(nextId);
+                const found = tasks.find((t) => t.id === nextId);
+                if (found) onSelectFile(found.targetFile);
+              }}
+            >
+              {tasks.map((task, idx) => (
+                <option key={task.id} value={task.id}>
+                  #{idx + 1} {task.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: '2rem 1rem',
+              textAlign: 'center',
+              color: '#71717a',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
             }}
           >
-            {tasks.map((task, idx) => (
-              <option key={task.id} value={task.id}>
-                #{idx + 1} {task.title}
-              </option>
-            ))}
-          </select>
-        </div>
+            <GraduationCap size={32} color="#52525b" />
+            <div style={{ fontSize: '0.85rem' }}>
+              В виртуальной файловой системе нет уроков SoloLearn.
+            </div>
+            <p style={{ fontSize: '0.75rem', margin: 0, color: '#a1a1aa' }}>
+              Создайте <code>task.json</code> или загрузите проект по ссылке с заданиями.
+            </p>
+            {onCreateTaskFile && (
+              <button
+                class="chakra-button chakra-button--teal chakra-button--sm"
+                onClick={onCreateTaskFile}
+              >
+                + Создать task.json
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Modal / Inline form to add task with any target file */}
         {isCreatingCustomTask && (
@@ -166,9 +285,11 @@ export function TaskPanel({
               />
             </div>
 
-            <button class="save-custom-task-btn" onClick={handleSaveCustomTask}>
-              Сохранить урок
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button class="save-custom-task-btn" onClick={handleSaveCustomTask}>
+                Сохранить урок
+              </button>
+            </div>
           </div>
         )}
 
