@@ -202,10 +202,15 @@ function resolveHtmlRelativePaths(
       return fullMatch;
     }
 
+    const isModule = /type=["']module["']/i.test(before) || /type=["']module["']/i.test(after);
+
     const matched = findVirtualFile(src, files);
     if (matched) {
       linkedJsFiles.add(matched.name);
       const safeJs = matched.content.replace(/<\/script/gi, '<\\/script');
+      if (isModule) {
+        return `<script type="module" data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS Module: ${matched.name}] */\n${safeJs}\n<\/script>`;
+      }
       return `<script data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS: ${matched.name}] */\ntry {\n${safeJs}\n} catch (err) {\nconsole.error('[Script Error in ' + "${matched.name}" + ']', err.message || err);\n}\n<\/script>`;
     } else {
       return `<!-- [VFS 404] Не найден файл скрипта: "${src}" -->\n<script>console.warn('[VFS 404] Файл скрипта не найден: "${src}"');<\/script>`;
@@ -213,6 +218,84 @@ function resolveHtmlRelativePaths(
   });
 
   return { resolvedHtml, linkedCssFiles, linkedJsFiles };
+}
+
+/**
+ * Создает инъекцию Vue 3 SFC Loader через esm.sh
+ */
+function createVueSfcBootstrapScript(): string {
+  return `
+<!-- [Vue 3 SFC Loader via esm.sh] -->
+<script src="https://esm.sh/vue@3/dist/vue.global.prod.js"><\/script>
+<script src="https://esm.sh/vue3-sfc-loader@0.8.4/dist/vue3-sfc-loader.js"><\/script>
+<script>
+(function() {
+  const sfcLoader = window['vue3-sfc-loader'];
+  if (!sfcLoader || !window.Vue) return;
+
+  const options = {
+    moduleCache: {
+      vue: window.Vue
+    },
+    async getFile(url) {
+      const clean = url.replace(/^(\\.\\/|\\/)+/, '');
+      const low = clean.toLowerCase();
+      if (window.__VFS__) {
+        if (window.__VFS__[clean] !== undefined) return window.__VFS__[clean];
+        if (window.__VFS__[low] !== undefined) return window.__VFS__[low];
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to load ' + url);
+      return await res.text();
+    },
+    addStyle(textContent) {
+      const style = document.createElement('style');
+      style.textContent = textContent;
+      const ref = document.head.getElementsByTagName('style')[0] || null;
+      document.head.insertBefore(style, ref);
+    },
+    log(type, ...args) {
+      console[type](...args);
+    }
+  };
+
+  window.__loadVueComponent = function(name) {
+    return sfcLoader.loadModule(name, options);
+  };
+
+  window.addEventListener('DOMContentLoaded', function() {
+    const appEl = document.getElementById('app');
+    if (!appEl || !window.__VFS__) return;
+
+    let mainVue = null;
+    for (const key of Object.keys(window.__VFS__)) {
+      if (key.toLowerCase() === 'app.vue') {
+        mainVue = key;
+        break;
+      }
+    }
+    if (!mainVue) {
+      for (const key of Object.keys(window.__VFS__)) {
+        if (key.endsWith('.vue')) {
+          mainVue = key;
+          break;
+        }
+      }
+    }
+
+    if (mainVue) {
+      sfcLoader.loadModule(mainVue, options)
+        .then(function(Comp) {
+          window.Vue.createApp(Comp).mount('#app');
+        })
+        .catch(function(err) {
+          console.error('[Vue 3 SFC Compile Error in ' + mainVue + ']', err.message || err);
+        });
+    }
+  });
+})();
+<\/script>
+`;
 }
 
 /**
@@ -232,10 +315,30 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
     };
   }
 
+  const hasVueFiles = files.some((f) => f.name.endsWith('.vue'));
+
   // 1. Находим входной HTML файл (index.html)
   let entryTemplateFile = files.find((f) => f.name === 'index.html' || f.name === 'template.html' || f.name === 'index.eta');
   if (!entryTemplateFile) {
     entryTemplateFile = files.find((f) => f.name.endsWith('.html') || f.name.endsWith('.eta'));
+  }
+
+  // Если есть .vue файлы, но нет index.html — синтезируем стандартный входной файл с монтированием в #app
+  if (!entryTemplateFile && hasVueFiles) {
+    entryTemplateFile = {
+      name: 'index.html',
+      content: `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue 3 App</title>
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>`,
+    };
   }
 
   if (!entryTemplateFile) {
@@ -313,6 +416,7 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
     .join('\n\n');
 
   const bootstrapScript = `<script>${createSandboxBootstrapScript(files)}<\/script>`;
+  const vueSfcScript = hasVueFiles ? createVueSfcBootstrapScript() : '';
   const isFullDoc = /<!DOCTYPE html/i.test(resolvedHtml) || /<html[\s>]/i.test(resolvedHtml);
 
   let finalHtml = '';
@@ -320,12 +424,21 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
   if (isFullDoc) {
     let doc = resolvedHtml;
 
-    // Вставляем bootstrap script и unlinked CSS в head
-    const headExtra = `\n  ${bootstrapScript}${unlinkedCss ? `\n  <style data-vfs-auto="true">\n${unlinkedCss}\n  </style>` : ''}\n`;
+    // Вставляем bootstrap script, unlinked CSS и Vue SFC loader в head
+    const headExtra = `\n  ${bootstrapScript}${vueSfcScript}${unlinkedCss ? `\n  <style data-vfs-auto="true">\n${unlinkedCss}\n  </style>` : ''}\n`;
     if (/<head[\s>]/i.test(doc)) {
       doc = doc.replace(/<head[\s>]/i, (m) => `${m}${headExtra}`);
     } else {
       doc = headExtra + doc;
+    }
+
+    // Если есть .vue файлы, но в разметке забыли <div id="app">, аккуратно добавляем его в начало body
+    if (hasVueFiles && !/id=["']app["']/i.test(doc)) {
+      if (/<body[\s>]/i.test(doc)) {
+        doc = doc.replace(/<body[\s>]/i, (m) => `${m}\n  <div id="app"></div>`);
+      } else {
+        doc = `<div id="app"></div>\n` + doc;
+      }
     }
 
     // Вставляем unlinked JS перед закрывающим </body>
@@ -347,9 +460,11 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${bootstrapScript}
+  ${vueSfcScript}
   ${unlinkedCss ? `<style data-vfs-auto="true">\n${unlinkedCss}\n</style>` : ''}
 </head>
 <body>
+  ${hasVueFiles && !/id=["']app["']/i.test(resolvedHtml) ? '<div id="app"></div>' : ''}
   <div id="root">
     ${resolvedHtml}
   </div>

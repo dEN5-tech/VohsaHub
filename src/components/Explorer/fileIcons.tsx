@@ -21,6 +21,14 @@ export function getFileIcon(fileName: string, size = 14) {
   ) {
     return <GraduationCap size={size} color="var(--chakra-colors-teal-fg, #14b8a6)" />;
   }
+  if (fileName.endsWith('.vue')) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+        <path d="M2 3h4l6 10 6-10h4l-10 18z" fill="#42b883" />
+        <path d="M6 3h3.5l2.5 4.5 2.5-4.5h3.5l-6 11z" fill="#35495e" />
+      </svg>
+    );
+  }
   if (fileName.endsWith('.eta') || fileName.endsWith('.html')) {
     return <FileCode size={size} color="var(--chakra-colors-teal-fg, #14b8a6)" />;
   }

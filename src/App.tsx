@@ -10,6 +10,7 @@ import { Header } from './components/Header';
 import { ActivityBar } from './components/ActivityBar';
 import { Explorer } from './components/Explorer';
 import { TaskPanel } from './components/TaskPanel';
+import { PackagePicker } from './components/PackagePicker/PackagePicker';
 import { EditorPane } from './components/EditorPane';
 import { PreviewPane } from './components/PreviewPane';
 import { ConsoleDrawer } from './components/ConsoleDrawer';
@@ -68,7 +69,7 @@ export function App() {
   const [activeTaskId, setActiveTaskId] = useState<string>('');
   const [lastValidationResult, setLastValidationResult] = useState<TaskValidationResult | null>(null);
 
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'explorer' | 'tasks' | null>(() => {
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'explorer' | 'tasks' | 'packages' | null>(() => {
     if (
       typeof window !== 'undefined' &&
       (window.location.hash.includes('project=') ||
@@ -278,6 +279,26 @@ export function App() {
                 setActiveFileName(name);
               }}
               onCreateTaskFile={isSecureTask ? undefined : handleCreateTaskFile}
+            />
+            <div
+              class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}
+              onMouseDown={handleExplorerResizeStart}
+              onDblClick={resetExplorerWidth}
+              title="Перетащите для изменения ширины (двойной клик: 240px)"
+            >
+              <div class="trimmer-line" />
+            </div>
+          </>
+        )}
+
+        {activeSidebarTab === 'packages' && (
+          <>
+            <PackagePicker
+              files={files}
+              width={explorerWidth}
+              onUpdateFile={handleFileChange}
+              onCreateFile={handleCreateFile}
+              onSelectFile={setActiveFileName}
             />
             <div
               class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}

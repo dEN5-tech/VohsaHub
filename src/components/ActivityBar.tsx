@@ -1,8 +1,8 @@
-import { Files, GraduationCap, RotateCcw, Terminal } from 'lucide-preact';
+import { Files, GraduationCap, RotateCcw, Terminal, Package } from 'lucide-preact';
 
 interface ActivityBarProps {
-  activeSidebarTab: 'explorer' | 'tasks' | null;
-  onSelectSidebarTab: (tab: 'explorer' | 'tasks') => void;
+  activeSidebarTab: 'explorer' | 'tasks' | 'packages' | null;
+  onSelectSidebarTab: (tab: 'explorer' | 'tasks' | 'packages') => void;
   isConsoleOpen: boolean;
   onToggleConsole: () => void;
   onReset: () => void;
@@ -27,6 +27,15 @@ export function ActivityBar({
         >
           <Files size={20} />
           {activeSidebarTab === 'explorer' && <span class="active-indicator" />}
+        </button>
+
+        <button
+          class={`activity-bar-btn ${activeSidebarTab === 'packages' ? 'active' : ''}`}
+          onClick={() => onSelectSidebarTab('packages')}
+          title="Библиотеки и пакеты esm.sh (Vue 3, React, Tailwind, Icons...)"
+        >
+          <Package size={20} />
+          {activeSidebarTab === 'packages' && <span class="active-indicator" />}
         </button>
 
         <button

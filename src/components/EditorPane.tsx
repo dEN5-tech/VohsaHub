@@ -20,7 +20,7 @@ interface EditorPaneProps {
 }
 
 function getFileLanguage(fileName: string): string {
-  if (fileName.endsWith('.eta') || fileName.endsWith('.html')) return 'html';
+  if (fileName.endsWith('.eta') || fileName.endsWith('.html') || fileName.endsWith('.vue')) return 'html';
   if (fileName.endsWith('.json')) return 'json';
   if (fileName.endsWith('.css') || fileName.endsWith('.scss')) return 'css';
   if (fileName.endsWith('.js') || fileName.endsWith('.mjs')) return 'javascript';
