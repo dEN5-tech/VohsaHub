@@ -221,78 +221,120 @@ function resolveHtmlRelativePaths(
 }
 
 /**
- * Создает инъекцию Vue 3 SFC Loader через esm.sh
+ * Создает инъекцию Vue 3 SFC Loader через esm.sh в виде ES-модуля
  */
 function createVueSfcBootstrapScript(): string {
   return `
 <!-- [Vue 3 SFC Loader via esm.sh] -->
-<script src="https://esm.sh/vue@3/dist/vue.global.prod.js"><\/script>
-<script src="https://esm.sh/vue3-sfc-loader@0.8.4/dist/vue3-sfc-loader.js"><\/script>
-<script>
-(function() {
-  const sfcLoader = window['vue3-sfc-loader'];
-  if (!sfcLoader || !window.Vue) return;
-
-  const options = {
-    moduleCache: {
-      vue: window.Vue
-    },
-    async getFile(url) {
-      const clean = url.replace(/^(\\.\\/|\\/)+/, '');
-      const low = clean.toLowerCase();
-      if (window.__VFS__) {
-        if (window.__VFS__[clean] !== undefined) return window.__VFS__[clean];
-        if (window.__VFS__[low] !== undefined) return window.__VFS__[low];
-      }
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to load ' + url);
-      return await res.text();
-    },
-    addStyle(textContent) {
-      const style = document.createElement('style');
-      style.textContent = textContent;
-      const ref = document.head.getElementsByTagName('style')[0] || null;
-      document.head.insertBefore(style, ref);
-    },
-    log(type, ...args) {
-      console[type](...args);
+<script type="module">
+(async function() {
+  try {
+    // 1. Загрузка Vue 3 через esm.sh (с fallback на jsdelivr)
+    let Vue;
+    try {
+      const vueModule = await import('https://esm.sh/vue@3');
+      Vue = vueModule.default && vueModule.createApp ? vueModule : (vueModule.default || vueModule);
+    } catch (e1) {
+      console.warn('[VohsaHub] Загрузка Vue 3 с esm.sh не удалась, пробуем fallback...', e1);
+      const vueModule = await import('https://cdn.jsdelivr.net/npm/vue@3/dist/vue.esm-browser.prod.js');
+      Vue = vueModule.default || vueModule;
     }
-  };
 
-  window.__loadVueComponent = function(name) {
-    return sfcLoader.loadModule(name, options);
-  };
-
-  window.addEventListener('DOMContentLoaded', function() {
-    const appEl = document.getElementById('app');
-    if (!appEl || !window.__VFS__) return;
-
-    let mainVue = null;
-    for (const key of Object.keys(window.__VFS__)) {
-      if (key.toLowerCase() === 'app.vue') {
-        mainVue = key;
-        break;
-      }
+    if (!Vue) {
+      throw new Error('Не удалось загрузить библиотеку Vue 3');
     }
-    if (!mainVue) {
+    window.Vue = Vue;
+
+    // 2. Загрузка vue3-sfc-loader
+    let sfcLoaderModule;
+    try {
+      sfcLoaderModule = await import('https://esm.sh/vue3-sfc-loader@0.8.4');
+    } catch (e2) {
+      console.warn('[VohsaHub] Загрузка vue3-sfc-loader с esm.sh не удалась, пробуем fallback...', e2);
+      sfcLoaderModule = await import('https://cdn.jsdelivr.net/npm/vue3-sfc-loader@0.8.4/dist/vue3-sfc-loader.esm.js');
+    }
+
+    const loadModule = sfcLoaderModule.loadModule || sfcLoaderModule.default?.loadModule || sfcLoaderModule.default;
+    if (typeof loadModule !== 'function') {
+      throw new Error('vue3-sfc-loader не предоставил функцию loadModule');
+    }
+
+    // 3. Конфигурация для загрузки SFC из виртуальной памяти редактора
+    const options = {
+      moduleCache: {
+        vue: Vue
+      },
+      async getFile(url) {
+        const clean = url.replace(/^(\\.\\/|\\/)+/, '');
+        const low = clean.toLowerCase();
+        if (window.__VFS__) {
+          if (window.__VFS__[clean] !== undefined) return window.__VFS__[clean];
+          if (window.__VFS__[low] !== undefined) return window.__VFS__[low];
+        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to load ' + url);
+        return await res.text();
+      },
+      addStyle(textContent) {
+        const style = document.createElement('style');
+        style.textContent = textContent;
+        const ref = document.head.getElementsByTagName('style')[0] || null;
+        document.head.insertBefore(style, ref);
+      },
+      log(type, ...args) {
+        console[type](...args);
+      }
+    };
+
+    window.__loadVueComponent = function(name) {
+      return loadModule(name, options);
+    };
+
+    // 4. Поиск главного .vue компонента и монтирование в #app
+    function mountApp() {
+      const appEl = document.getElementById('app');
+      if (!appEl || !window.__VFS__) return;
+
+      let mainVue = null;
       for (const key of Object.keys(window.__VFS__)) {
-        if (key.endsWith('.vue')) {
+        if (key.toLowerCase() === 'app.vue') {
           mainVue = key;
           break;
         }
       }
+      if (!mainVue) {
+        for (const key of Object.keys(window.__VFS__)) {
+          if (key.endsWith('.vue')) {
+            mainVue = key;
+            break;
+          }
+        }
+      }
+
+      if (mainVue) {
+        loadModule(mainVue, options)
+          .then(function(Comp) {
+            const createAppFn = Vue.createApp || Vue.default?.createApp;
+            if (createAppFn) {
+              createAppFn(Comp).mount('#app');
+            } else {
+              console.error('[Vue 3 Error] Vue.createApp не найден в экспортах Vue');
+            }
+          })
+          .catch(function(err) {
+            console.error('[Vue 3 SFC Compile Error in ' + mainVue + ']', err.message || err);
+          });
+      }
     }
 
-    if (mainVue) {
-      sfcLoader.loadModule(mainVue, options)
-        .then(function(Comp) {
-          window.Vue.createApp(Comp).mount('#app');
-        })
-        .catch(function(err) {
-          console.error('[Vue 3 SFC Compile Error in ' + mainVue + ']', err.message || err);
-        });
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', mountApp);
+    } else {
+      mountApp();
     }
-  });
+  } catch (err) {
+    console.error('[Vue 3 Loader Boot Error]', err.message || err);
+  }
 })();
 <\/script>
 `;

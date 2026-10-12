@@ -37,7 +37,7 @@ const POPULAR_LIBRARIES: PopularLib[] = [
     desc: 'Реактивный прогрессивный фреймворк',
     category: 'vue',
     icon: '💚',
-    url: 'https://esm.sh/vue@3/dist/vue.esm-browser.js',
+    url: 'https://esm.sh/vue@3',
   },
   {
     name: 'Vue 3 SFC Loader',
