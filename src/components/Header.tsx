@@ -1,4 +1,4 @@
-import { Play, Share2, Smartphone, Tablet, Monitor } from 'lucide-preact';
+import { Play, Share2, Smartphone, Tablet, Monitor, Code2, Eye } from 'lucide-preact';
 
 interface HeaderProps {
   activeFileName: string;
@@ -8,6 +8,8 @@ interface HeaderProps {
   onOpenExport: () => void;
   viewportMode: 'desktop' | 'tablet' | 'mobile';
   onChangeViewport: (mode: 'desktop' | 'tablet' | 'mobile') => void;
+  mobileActivePane?: 'editor' | 'preview';
+  onChangeMobileActivePane?: (pane: 'editor' | 'preview') => void;
 }
 
 export function Header({
@@ -18,6 +20,8 @@ export function Header({
   onOpenExport,
   viewportMode,
   onChangeViewport,
+  mobileActivePane = 'editor',
+  onChangeMobileActivePane,
 }: HeaderProps) {
   return (
     <header class="app-header">
@@ -37,6 +41,29 @@ export function Header({
       </div>
 
       <div class="header-center">
+        {/* Mobile pane switcher (Editor / Preview) - visible on mobile / narrow viewports */}
+        {onChangeMobileActivePane && (
+          <div class="mobile-pane-switcher" title="Переключение редактора и предпросмотра на смартфонах">
+            <button
+              class={`mobile-pane-btn ${mobileActivePane === 'editor' ? 'active' : ''}`}
+              onClick={() => onChangeMobileActivePane('editor')}
+              type="button"
+            >
+              <Code2 size={13} />
+              <span>Код</span>
+            </button>
+            <button
+              class={`mobile-pane-btn ${mobileActivePane === 'preview' ? 'active' : ''}`}
+              onClick={() => onChangeMobileActivePane('preview')}
+              type="button"
+            >
+              <Eye size={13} />
+              <span>Экран</span>
+            </button>
+          </div>
+        )}
+
+        {/* Viewport controls - hidden on mobile screens via CSS */}
         <div class="viewport-controls" title="Размер экрана предпросмотра">
           <button
             class={`vp-btn ${viewportMode === 'desktop' ? 'active' : ''}`}
@@ -76,23 +103,24 @@ export function Header({
         </label>
 
         <button
-          class="chakra-button chakra-button--solid-teal"
+          class="chakra-button chakra-button--solid-teal header-btn--compile"
           onClick={onRunCompile}
           title="Собрать (Ctrl+Enter)"
         >
           <Play size={13} fill="currentColor" />
-          <span>Собрать</span>
+          <span class="btn-text">Собрать</span>
         </button>
 
         <button
-          class="chakra-button chakra-button--subtle-teal"
+          class="chakra-button chakra-button--subtle-teal header-btn--share"
           onClick={onOpenExport}
-          title="Поделиться проектом через сжатую ссылку (fflate) / Экспорт"
+          title="Поделиться проектом / Экспорт"
         >
           <Share2 size={13} />
-          <span>Поделиться</span>
+          <span class="btn-text">Поделиться</span>
         </button>
       </div>
     </header>
   );
 }
+

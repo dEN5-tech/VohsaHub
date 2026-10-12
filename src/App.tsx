@@ -82,6 +82,7 @@ export function App() {
   });
 
   const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [mobileActivePane, setMobileActivePane] = useState<'editor' | 'preview'>('editor');
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [cursorPos, setCursorPos] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
 
@@ -224,9 +225,11 @@ export function App() {
         onOpenExport={() => setIsExportOpen(true)}
         viewportMode={viewportMode}
         onChangeViewport={setViewportMode}
+        mobileActivePane={mobileActivePane}
+        onChangeMobileActivePane={setMobileActivePane}
       />
 
-      <div class={`app-workspace ${isResizing ? 'is-resizing' : ''}`}>
+      <div class={`app-workspace ${isResizing ? 'is-resizing' : ''} ${activeSidebarTab ? 'has-sidebar-open' : ''}`}>
         <ActivityBar
           activeSidebarTab={activeSidebarTab}
           onSelectSidebarTab={(tab) =>
@@ -244,7 +247,10 @@ export function App() {
               files={visibleFiles}
               activeFileName={activeFileName}
               width={explorerWidth}
-              onSelectFile={setActiveFileName}
+              onSelectFile={(name) => {
+                setActiveFileName(name);
+                setMobileActivePane('editor');
+              }}
               onCreateFile={handleCreateFile}
               onDeleteFile={handleDeleteFile}
               onRenameFile={handleRenameFile}
@@ -269,7 +275,10 @@ export function App() {
               files={files}
               width={explorerWidth}
               onSelectTask={handleSelectTask}
-              onSelectFile={setActiveFileName}
+              onSelectFile={(name) => {
+                setActiveFileName(name);
+                setMobileActivePane('editor');
+              }}
               onAddTask={handleAddTask}
               onValidateTask={handleValidateTask}
               lastValidationResult={lastValidationResult}
@@ -277,6 +286,7 @@ export function App() {
               vfsTaskError={vfsTasksData?.parseError}
               onOpenTaskFile={isSecureTask ? undefined : (name) => {
                 setActiveFileName(name);
+                setMobileActivePane('editor');
               }}
               onCreateTaskFile={isSecureTask ? undefined : handleCreateTaskFile}
             />
@@ -298,7 +308,10 @@ export function App() {
               width={explorerWidth}
               onUpdateFile={handleFileChange}
               onCreateFile={handleCreateFile}
-              onSelectFile={setActiveFileName}
+              onSelectFile={(name) => {
+                setActiveFileName(name);
+                setMobileActivePane('editor');
+              }}
             />
             <div
               class={`trimmer-gutter trimmer-gutter--explorer ${isResizing ? 'active' : ''}`}
@@ -311,7 +324,10 @@ export function App() {
           </>
         )}
 
-        <main class="main-split-container" ref={mainSplitContainerRef}>
+        <main
+          class={`main-split-container mobile-active-${mobileActivePane}`}
+          ref={mainSplitContainerRef}
+        >
           <div
             class="editor-pane-container"
             style={{ width: `${splitPercent}%`, flex: 'none' }}
