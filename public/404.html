@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>VohsaHub Redirect</title>
+  <script>
+    // GitHub Pages SPA redirect
+    // If user opened https://den5-tech.github.io/VohsaHub/v2=... or /p=...
+    // redirect to https://den5-tech.github.io/VohsaHub/#v2=... or /#p=...
+    (function() {
+      var path = window.location.pathname;
+      var repoPrefix = '/VohsaHub';
+      if (path.startsWith(repoPrefix)) {
+        var subPath = path.substring(repoPrefix.length);
+        if (subPath.startsWith('/')) {
+          subPath = subPath.substring(1);
+        }
+        if (subPath.length > 0) {
+          var target = repoPrefix + '/#' + subPath + window.location.search + window.location.hash;
+          window.location.replace(target);
+          return;
+        }
+      }
+      window.location.replace('/VohsaHub/');
+    })();
+  </script>
+</head>
+<body>
+  Redirecting to VohsaHub...
+</body>
+</html>
