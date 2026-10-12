@@ -194,14 +194,26 @@ export function decompressProjectFromUrl(hash: string = window.location.hash): {
 /**
  * Асинхронная универсальная распаковка проекта из URL (поддерживает и v1, и v2 Rust WASM)
  */
-export async function decompressProjectFromUrlAsync(hash: string = window.location.hash): Promise<{
+export async function decompressProjectFromUrlAsync(rawHash?: string): Promise<{
   files: VirtualFile[];
   title?: string;
   isSecureTask?: boolean;
 } | null> {
-  if (!hash) return null;
+  let rawStr = rawHash ?? (typeof window !== 'undefined' ? (window.location.hash || window.location.search) : '');
+  if (!rawStr && typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    if (path.includes('v2=')) {
+      rawStr = path.substring(path.indexOf('v2='));
+    } else if (path.includes('p=')) {
+      rawStr = path.substring(path.indexOf('p='));
+    } else if (path.includes('project=')) {
+      rawStr = path.substring(path.indexOf('project='));
+    }
+  }
 
-  const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!rawStr) return null;
+
+  const cleanHash = rawStr.replace(/^[#?\/]+/, '');
   const params = new URLSearchParams(cleanHash);
 
   const is_s_query = params.get('is_s');
@@ -246,6 +258,6 @@ export async function decompressProjectFromUrlAsync(hash: string = window.locati
   }
 
   // 2. Если не v2, пробуем v1 через синхронный метод
-  return decompressProjectFromUrl(hash);
+  return decompressProjectFromUrl(rawStr);
 }
 

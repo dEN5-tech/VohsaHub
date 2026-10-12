@@ -78,11 +78,13 @@ export function EditorPane({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Create models for all initial files
+    // Create models for all initial files with safe vfs:/// URI
     files.forEach((file) => {
       if (!modelsMapRef.current.has(file.name)) {
         const lang = getFileLanguage(file.name);
-        const model = monaco.editor.createModel(file.content, lang);
+        const uri = monaco.Uri.parse(`vfs:///${file.name}`);
+        const existingModel = monaco.editor.getModel(uri);
+        const model = existingModel || monaco.editor.createModel(file.content, lang, uri);
         modelsMapRef.current.set(file.name, model);
       }
     });
@@ -91,6 +93,7 @@ export function EditorPane({
 
     const editor = monaco.editor.create(containerRef.current, {
       model: activeModel,
+      links: false, // Отключаем встроенный LinkDetector Monaco во избежание ошибочных window.open на file:///
       theme: 'chakra-dark',
       fontSize: 13,
       fontFamily: "'Fira Code', 'Courier New', monospace",
@@ -283,7 +286,9 @@ export function EditorPane({
     files.forEach((file) => {
       if (!modelsMapRef.current.has(file.name)) {
         const lang = getFileLanguage(file.name);
-        const model = monaco.editor.createModel(file.content, lang);
+        const uri = monaco.Uri.parse(`vfs:///${file.name}`);
+        const existingModel = monaco.editor.getModel(uri);
+        const model = existingModel || monaco.editor.createModel(file.content, lang, uri);
         modelsMapRef.current.set(file.name, model);
       } else if (!isInternal) {
         const model = modelsMapRef.current.get(file.name)!;

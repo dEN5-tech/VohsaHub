@@ -68,9 +68,15 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
     triggerCompile(files);
 
     const loadAsyncProject = async () => {
-      const currentHash = window.location.hash;
-      if (currentHash.includes('v2=') || currentHash.includes('project=') || currentHash.includes('p=')) {
-        const shared = await decompressProjectFromUrlAsync(currentHash);
+      let rawParam = window.location.hash || window.location.search;
+      if (!rawParam && window.location.pathname.includes('v2=')) {
+        rawParam = window.location.pathname.substring(window.location.pathname.indexOf('v2='));
+      } else if (!rawParam && window.location.pathname.includes('p=')) {
+        rawParam = window.location.pathname.substring(window.location.pathname.indexOf('p='));
+      }
+
+      if (rawParam && (rawParam.includes('v2=') || rawParam.includes('project=') || rawParam.includes('p='))) {
+        const shared = await decompressProjectFromUrlAsync(rawParam);
         if (shared && shared.files.length > 0) {
           setIsLoadedFromUrl(true);
           setIsSecureTask(Boolean(shared.isSecureTask));
@@ -86,9 +92,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
     };
 
     // Если на старте был v2 или облачный короткий ID p=, загружаем его асинхронно
-    if (window.location.hash.includes('v2=') || window.location.hash.includes('p=')) {
-      loadAsyncProject();
-    }
+    loadAsyncProject();
 
     const handleHashChange = () => {
       loadAsyncProject();

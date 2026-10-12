@@ -1,10 +1,16 @@
 import * as monaco from 'monaco-editor';
-import { html, css, typescript } from 'monaco-editor';
+import { html, css, json, typescript } from 'monaco-editor';
 
 // Конфигурируем веб-воркеры Monaco через относительный путь к node_modules
 // @ts-ignore
 window.MonacoEnvironment = {
   getWorker(_: any, label: string) {
+    if (label === 'json') {
+      return new Worker(
+        new URL('../node_modules/monaco-editor/esm/vs/language/json/json.worker.js', import.meta.url),
+        { type: 'module' }
+      );
+    }
     if (label === 'html' || label === 'handlebars' || label === 'razor') {
       return new Worker(
         new URL('../node_modules/monaco-editor/esm/vs/language/html/html.worker.js', import.meta.url),
@@ -93,8 +99,31 @@ try {
     noImplicitAny: false,
     allowSyntheticDefaultImports: true,
   });
+
+  // Настройка JSON Worker (валидация, отключаем внешние сетевые/схемные запросы)
+  json?.jsonDefaults?.setDiagnosticsOptions({
+    validate: true,
+    allowComments: true,
+    trailingCommas: 'ignore',
+    enableSchemaRequest: false,
+    schemas: [],
+  });
 } catch (e) {
   console.warn('Monaco language defaults setup warning:', e);
+}
+
+// Защита от несанкционированного открытия file:/// ссылок в браузере
+try {
+  monaco.editor.registerEditorOpener({
+    openCodeEditor(_source, resource) {
+      if (resource.scheme === 'file') {
+        return true; // блокируем попытки перехода на системную файловую систему
+      }
+      return false;
+    },
+  });
+} catch (_) {
+  // ignore
 }
 
 // Подключаем Emmet плагин для быстрой генерации HTML / CSS / JSX аббревиатур
