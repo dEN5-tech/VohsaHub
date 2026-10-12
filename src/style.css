@@ -953,10 +953,20 @@ html, body {
   flex: 1;
   background-color: var(--chakra-colors-bg, #09090b);
   display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+/* In tablet and mobile emulation mode, center the device frame with breathing room */
+.preview-canvas-area:has(.mode-tablet),
+.preview-canvas-area:has(.mode-mobile) {
   align-items: center;
   justify-content: center;
-  overflow: auto;
   padding: 1.25rem;
+  overflow: auto;
 }
 
 .viewport-container {
@@ -966,6 +976,15 @@ html, body {
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+/* Desktop mode fills 100% of the canvas area seamlessly without gaps */
+.viewport-container.mode-desktop {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
 }
 
 .viewport-container.mode-tablet,
