@@ -88,8 +88,12 @@ export async function loadProjectFromCloud(id: string): Promise<{
   isSecureTask?: boolean;
 } | null> {
   try {
+    console.info(`[Vohsa Cloud] 📡 Загрузка проекта по ID: "${id}"...`);
     const response = await fetch(`${VOHSA_BACKEND_URL}/api/p/${encodeURIComponent(id)}`);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`[Vohsa Cloud] ⚠️ Сервер вернул статус ${response.status}: ${response.statusText}`);
+      return null;
+    }
 
     const data = await response.json();
     if (data && data.payload && Array.isArray(data.payload.f)) {
@@ -97,14 +101,17 @@ export async function loadProjectFromCloud(id: string): Promise<{
         name: item.n,
         content: item.c,
       }));
+      console.info(`[Vohsa Cloud] ✅ Проект успешно получен: "${data.record?.title || id}" (файлов: ${files.length})`);
       return {
         files,
         title: data.payload.t || data.record?.title,
         isSecureTask: Boolean(data.payload.s || data.record?.is_secret),
       };
+    } else {
+      console.warn('[Vohsa Cloud] ⚠️ Некорректный формат payload:', data);
     }
   } catch (err) {
-    console.warn('Не удалось загрузить проект из облака по ID:', err);
+    console.error('[Vohsa Cloud] ❌ Ошибка сетевого запроса к облаку:', err);
   }
   return null;
 }
