@@ -2,8 +2,8 @@ import { ensureWasmInitialized } from './urlShareCompressor';
 import { wasm_encode_project } from '../wasm/vohsa_core.js';
 import type { VirtualFile } from './templateEngine';
 
-// Публичный адрес Rust бэкенда на вашем VPS
-export const VOHSA_BACKEND_URL = 'http://vohsa.85.198.71.69.sslip.io';
+// Публичный адрес Rust бэкенда на вашем VPS (строго HTTPS для работы на GitHub Pages)
+export const VOHSA_BACKEND_URL = 'https://vohsa.85.198.71.69.sslip.io';
 
 export interface CloudSaveResult {
   id: string;
