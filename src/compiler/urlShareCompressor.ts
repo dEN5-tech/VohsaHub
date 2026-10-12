@@ -207,6 +207,20 @@ export async function decompressProjectFromUrlAsync(hash: string = window.locati
   const is_s_query = params.get('is_s');
   const isSecureFromUrl = is_s_query === '1' || is_s_query === 'true' || cleanHash.includes('is_s');
 
+  // 0. Проверяем облачный ID (#p=...) из Rust бэкенда
+  const shortId = params.get('p');
+  if (shortId) {
+    try {
+      const { loadProjectFromCloud } = await import('./vohsaBackendClient');
+      const cloudProject = await loadProjectFromCloud(shortId);
+      if (cloudProject) {
+        return cloudProject;
+      }
+    } catch (err) {
+      console.warn('Ошибка загрузки проекта по короткому ID из облака:', err);
+    }
+  }
+
   // 1. Проверяем V2 формат (#v2=...)
   const v2Hash = params.get('v2');
   if (v2Hash) {

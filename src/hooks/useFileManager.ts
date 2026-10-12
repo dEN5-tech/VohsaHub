@@ -36,6 +36,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
       Boolean(initialSharedProject) ||
       window.location.hash.includes('project=') ||
       window.location.hash.includes('v2=') ||
+      window.location.hash.includes('p=') ||
       window.location.href.includes('boost')
     );
   });
@@ -68,7 +69,7 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
 
     const loadAsyncProject = async () => {
       const currentHash = window.location.hash;
-      if (currentHash.includes('v2=') || currentHash.includes('project=')) {
+      if (currentHash.includes('v2=') || currentHash.includes('project=') || currentHash.includes('p=')) {
         const shared = await decompressProjectFromUrlAsync(currentHash);
         if (shared && shared.files.length > 0) {
           setIsLoadedFromUrl(true);
@@ -84,8 +85,8 @@ export function useFileManager({ autoCompile }: UseFileManagerOptions): UseFileM
       }
     };
 
-    // Если на старте был v2, загружаем его через WASM
-    if (window.location.hash.includes('v2=')) {
+    // Если на старте был v2 или облачный короткий ID p=, загружаем его асинхронно
+    if (window.location.hash.includes('v2=') || window.location.hash.includes('p=')) {
       loadAsyncProject();
     }
 

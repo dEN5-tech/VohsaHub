@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'preact/hooks';
-import { X, Copy, Check, Download, Share2, Link, AlertTriangle, ShieldCheck, Zap } from 'lucide-preact';
+import { X, Copy, Check, Download, Share2, Link, AlertTriangle, ShieldCheck, Zap, Cloud, Loader2 } from 'lucide-preact';
 import { buildProductionStandaloneHtml, type VirtualFile } from '../compiler/templateEngine';
 import { compressProjectToUrl, compressProjectToUrlV2, type ShareUrlStats } from '../compiler/urlShareCompressor';
+import { saveProjectToCloud, type CloudSaveResult } from '../compiler/vohsaBackendClient';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -18,11 +19,32 @@ export function ExportModal({
 }: ExportModalProps) {
   if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState<'share' | 'html' | 'iframe' | 'json'>('share');
+  const [activeTab, setActiveTab] = useState<'share' | 'cloud' | 'html' | 'iframe' | 'json'>('share');
   const [copied, setCopied] = useState(false);
   const [isSecureShare, setIsSecureShare] = useState(false);
   const [useWasmV2, setUseWasmV2] = useState(true);
   const [wasmStats, setWasmStats] = useState<ShareUrlStats | null>(null);
+
+  // Облачное сохранение через Rust RPC бэкенд
+  const [cloudResult, setCloudResult] = useState<CloudSaveResult | null>(null);
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const [cloudError, setCloudError] = useState<string | null>(null);
+
+  const handleSaveToCloud = async () => {
+    setIsSavingCloud(true);
+    setCloudError(null);
+    try {
+      const res = await saveProjectToCloud(files, snippetTitle, isSecureShare);
+      setCloudResult(res);
+      navigator.clipboard.writeText(res.shortUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e: any) {
+      setCloudError(e.message || 'Ошибка сохранения в облако');
+    } finally {
+      setIsSavingCloud(false);
+    }
+  };
 
   // Сжатие проекта в URL через fflate (Deflate v1)
   const v1Stats: ShareUrlStats = useMemo(() => {
@@ -69,6 +91,8 @@ export function ExportModal({
     switch (activeTab) {
       case 'share':
         return activeShareStats.url;
+      case 'cloud':
+        return cloudResult ? cloudResult.shortUrl : '';
       case 'iframe':
         return iframeSnippet;
       case 'json':
@@ -112,7 +136,15 @@ export function ExportModal({
             class={`chakra-modal__tab ${activeTab === 'share' ? 'active' : ''}`}
             onClick={() => setActiveTab('share')}
           >
-            🔗 Ссылка (URL Share)
+            🔗 URL Hash (Без сервера)
+          </button>
+          <button
+            class={`chakra-modal__tab ${activeTab === 'cloud' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cloud')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Cloud size={14} color="#38bdf8" />
+            <span>Облако Rust (Короткая ссылка)</span>
           </button>
           <button
             class={`chakra-modal__tab ${activeTab === 'html' ? 'active' : ''}`}
@@ -294,6 +326,110 @@ export function ExportModal({
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : activeTab === 'cloud' ? (
+            <div class="share-url-panel">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px',
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  marginBottom: '14px',
+                }}
+              >
+                <Cloud size={24} color="#38bdf8" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, color: '#f0f9ff', fontSize: '0.9rem' }}>
+                    Облачное хранилище VohsaHub (Rust + Brotli V2)
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    Сжимает проект и сохраняет под коротким ID (всего ~45 символов). Больше никаких километровых ссылок!
+                  </div>
+                </div>
+              </div>
+
+              {cloudResult ? (
+                <>
+                  <div class="share-url-input-wrap">
+                    <input
+                      type="text"
+                      readOnly
+                      class="share-url-input"
+                      value={cloudResult.shortUrl}
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
+                    <button
+                      class="chakra-button chakra-button--solid-teal"
+                      onClick={() => {
+                        navigator.clipboard.writeText(cloudResult.shortUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      title="Скопировать короткую ссылку"
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copied ? 'Скопировано' : 'Копировать'}</span>
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    <a
+                      href={cloudResult.redirectUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="chakra-button chakra-button--xs chakra-button--outline"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <span>Открыть через серверный редирект ↗</span>
+                    </a>
+                  </div>
+
+                  <div class="share-metrics-grid" style={{ marginTop: '12px' }}>
+                    <div class="share-metric-card">
+                      <span class="metric-label">Короткий ID</span>
+                      <strong class="metric-val" style={{ color: '#38bdf8' }}>{cloudResult.id}</strong>
+                    </div>
+                    <div class="share-metric-card">
+                      <span class="metric-label">Файлов</span>
+                      <strong class="metric-val">{cloudResult.filesCount}</strong>
+                    </div>
+                    <div class="share-metric-card">
+                      <span class="metric-label">Исходный JSON</span>
+                      <strong class="metric-val">{cloudResult.rawBytes} байт</strong>
+                    </div>
+                    <div class="share-metric-card">
+                      <span class="metric-label">Сжато Brotli V2</span>
+                      <strong class="metric-val" style={{ color: '#4ade80' }}>{cloudResult.compressedBytes} байт</strong>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px 10px' }}>
+                  <button
+                    class="chakra-button chakra-button--solid-teal"
+                    onClick={handleSaveToCloud}
+                    disabled={isSavingCloud}
+                    style={{ fontSize: '0.9rem', padding: '10px 20px', borderRadius: '8px' }}
+                  >
+                    {isSavingCloud ? <Loader2 size={16} class="spin-animation" /> : <Cloud size={16} />}
+                    <span>{isSavingCloud ? 'Сохранение в Rust бэкенд...' : 'Сохранить и получить короткую ссылку'}</span>
+                  </button>
+
+                  {cloudError && (
+                    <div style={{ marginTop: '12px', color: '#f87171', fontSize: '0.8rem' }}>
+                      ⚠️ {cloudError}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '14px', fontSize: '0.78rem', color: '#71717a' }}>
+                    Бэкенд на Rust сжимает файлы через Brotli V2 и выделяет уникальный короткий идентификатор.
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <pre class="export-preview">
