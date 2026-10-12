@@ -3,6 +3,7 @@ import { monaco } from '../monacoSetup';
 import { Plus, X, ChevronRight, Sparkles } from 'lucide-preact';
 import { getFileIcon } from './Explorer';
 import { findVirtualFile, type VirtualFile } from '../compiler/templateEngine';
+import { isVfsTaskFile } from '../compiler/astTaskValidator';
 import type { LearningTask, TaskValidationResult } from '../types/learningTasks';
 
 interface EditorPaneProps {
@@ -375,6 +376,12 @@ export function EditorPane({
       }
     });
     activeWidgetsRef.current = [];
+
+    // В файлах заданий (task.json, tasks.json, *.task.json и т.д.) не монтируем виджеты слотов,
+    // чтобы исходная JSON-структура была полностью видна и редактируема
+    if (isVfsTaskFile(activeFileName)) {
+      return;
+    }
 
     const targetModel = modelsMapRef.current.get(activeFileName);
     const model = editor.getModel();
