@@ -907,9 +907,13 @@ html, body {
 }
 
 .preview-pane-wrapper {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .preview-toolbar {
@@ -951,8 +955,12 @@ html, body {
 
 .preview-canvas-area {
   flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
   background-color: var(--chakra-colors-bg, #09090b);
   display: flex;
+  flex-direction: column;
   align-items: stretch;
   justify-content: stretch;
   overflow: hidden;
@@ -2069,10 +2077,10 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--chakra-colors-fg-subtle, #71717a);
+  color: #e4e4e7;
   text-transform: uppercase;
 }
 
@@ -2127,11 +2135,11 @@ html, body {
 }
 
 .task-selector-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--chakra-colors-fg-subtle, #71717a);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #cbd5e1;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .task-selector-select {
@@ -2299,10 +2307,48 @@ html, body {
   line-height: 1.35;
 }
 
+.task-goal-box {
+  background-color: rgba(20, 184, 166, 0.08);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-sizing: border-box;
+}
+
+.task-goal-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2dd4bf;
+  display: inline-block;
+}
+
 .task-description {
   margin: 0;
-  font-size: 0.76rem;
-  color: #a1a1aa;
+  font-size: 0.82rem;
+  color: #f4f4f5;
+  line-height: 1.5;
+}
+
+.task-validation-feedback {
+  background-color: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+}
+
+.feedback-text {
+  font-size: 0.8rem;
+  color: #fef08a;
+  font-weight: 600;
   line-height: 1.45;
 }
 

@@ -161,6 +161,15 @@ monaco.editor.defineTheme('chakra-dark', {
     { token: 'variable', foreground: 'FB923C' },
     { token: 'variable.parameter', foreground: 'FB923C', fontStyle: 'italic' },
     { token: 'constant', foreground: 'C084FC' },
+    { token: 'attribute.name.css', foreground: '38BDF8' },
+    { token: 'property.css', foreground: '38BDF8' },
+    { token: 'support.type.property-name.css', foreground: '38BDF8' },
+    { token: 'support.type.property-name', foreground: '38BDF8' },
+    { token: 'attribute.value.css', foreground: 'FDE047' },
+    { token: 'support.constant.property-value.css', foreground: 'FDE047' },
+    { token: 'string.css', foreground: 'FDE047' },
+    { token: 'unit.css', foreground: 'C084FC' },
+    { token: 'number.css', foreground: 'C084FC' },
   ],
   colors: {
     // Surface & background matching Chakra UI #09090b
