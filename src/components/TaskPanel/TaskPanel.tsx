@@ -10,7 +10,91 @@ import {
   AlertTriangle,
   FileJson,
   Edit3,
+  Code2,
 } from 'lucide-preact';
+
+interface DescriptionToken {
+  text: string;
+  isSelector: boolean;
+  cleanSelector?: string;
+}
+
+function parseDescriptionTokens(description: string): DescriptionToken[] {
+  // Matches CSS class (.class), ID (#id), pseudo-classes (:pseudo), tags, <tags>, backticked code
+  const regex = /(`[^`]+`|<[a-zA-Z0-9_-]+>|(?:(?<=[^\w-]|^)[.#][a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?)|(?<=[^\w-]|^):[a-zA-Z0-9_-]+|\b(?:h[1-6]|input|button|header|nav|form|textarea|select|label|section|footer|main)\b(?::[a-zA-Z0-9_-]+)?)/g;
+
+  const tokens: DescriptionToken[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(description)) !== null) {
+    const matchStart = match.index;
+    const matchEnd = matchStart + match[0].length;
+    const matchedStr = match[0];
+
+    if (matchStart > lastIndex) {
+      tokens.push({
+        text: description.substring(lastIndex, matchStart),
+        isSelector: false,
+      });
+    }
+
+    const isFileExt = /^\.(css|html|js|json|png|svg|ts|tsx)$/i.test(matchedStr);
+
+    if (isFileExt) {
+      tokens.push({ text: matchedStr, isSelector: false });
+    } else {
+      const cleanSelector = matchedStr.replace(/^[`<]|[`>]$/g, '');
+      tokens.push({
+        text: matchedStr,
+        isSelector: true,
+        cleanSelector,
+      });
+    }
+
+    lastIndex = matchEnd;
+  }
+
+  if (lastIndex < description.length) {
+    tokens.push({
+      text: description.substring(lastIndex),
+      isSelector: false,
+    });
+  }
+
+  return tokens;
+}
+
+function renderDescriptionWithClickableSelectors(
+  description: string,
+  targetFile: string,
+  onNavigate: (selector: string, file: string) => void
+) {
+  const tokens = parseDescriptionTokens(description);
+
+  return tokens.map((token, idx) => {
+    if (!token.text) return null;
+    if (token.isSelector) {
+      const selectorToNavigate = token.cleanSelector || token.text;
+      return (
+        <button
+          key={idx}
+          class="inline-selector-chip"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(selectorToNavigate, targetFile);
+          }}
+          title={"Перейти к коду \"" + selectorToNavigate + "\" в " + targetFile}
+        >
+          <Code2 size={11} class="selector-icon" />
+          <span class="selector-text">{token.text}</span>
+        </button>
+      );
+    }
+    return <span key={idx}>{token.text}</span>;
+  });
+}
 import type { TaskPanelProps } from './types';
 import type { LearningTask } from '../../types/learningTasks';
 
@@ -313,7 +397,22 @@ export function TaskPanel({
             {/* Четкая цель урока */}
             <div class="task-goal-box">
               <span class="task-goal-label">ЦЕЛЬ УРОКА:</span>
-              <p class="task-description">{currentTask.description}</p>
+              <p class="task-description">
+                {renderDescriptionWithClickableSelectors(
+                  currentTask.description,
+                  currentTask.targetFile,
+                  (selector, file) => {
+                    if (onSelectFile && file) {
+                      onSelectFile(file);
+                    }
+                    window.dispatchEvent(
+                      new CustomEvent('vohsa:navigate-to-text', {
+                        detail: { text: selector, targetFile: file },
+                      })
+                    );
+                  }
+                )}
+              </p>
             </div>
 
             {/* AST Syntax Error if entire file failed parser */}

@@ -55,9 +55,11 @@ export function EditorPane({
   const onDeleteFileRef = useRef(onDeleteFile);
   const onRenameFileRef = useRef(onRenameFile);
   const filesRef = useRef(files);
+  const activeFileNameRef = useRef(activeFileName);
   const isInternalChangeRef = useRef(false);
 
   filesRef.current = files;
+  activeFileNameRef.current = activeFileName;
   onFileChangeRef.current = onFileChange;
   onCursorChangeRef.current = onCursorChange;
   onSelectFileRef.current = onSelectFile;
@@ -265,7 +267,103 @@ export function EditorPane({
     });
     resizeObserver.observe(containerRef.current);
 
+    // Listen to jump-to-selector events from TaskPanel
+    let navDecorations: string[] = [];
+    let navTimer: any = null;
+
+    const handleNavigateToText = (e: any) => {
+      const { text, targetFile } = e.detail || {};
+      if (!text) return;
+
+      const ed = editorInstanceRef.current;
+      if (!ed) return;
+
+      // 1. If target file is specified, switch model immediately
+      if (targetFile) {
+        const targetModel = modelsMapRef.current.get(targetFile);
+        if (targetModel && ed.getModel() !== targetModel) {
+          ed.setModel(targetModel);
+        }
+        if (targetFile !== activeFileNameRef.current) {
+          onSelectFileRef.current(targetFile);
+        }
+      }
+
+      // 2. Perform search and smooth reveal
+      const executeNavigation = () => {
+        const currentModel = ed.getModel();
+        if (!currentModel) return;
+
+        // Try direct find
+        let matches = currentModel.findMatches(text, false, false, false, null, true);
+
+        // Fallback for HTML classes/IDs (e.g. .grid-container -> grid-container)
+        if ((!matches || matches.length === 0) && (text.startsWith('.') || text.startsWith('#'))) {
+          const rawName = text.slice(1);
+          matches = currentModel.findMatches(rawName, false, false, false, null, true);
+        }
+
+        if (!matches || matches.length === 0) return;
+
+        // Prioritize non-comment matches (rule declarations with '{' or code lines)
+        let bestMatch = matches[0];
+        const nonCommentMatches = matches.filter((m) => {
+          const line = currentModel.getLineContent(m.range.startLineNumber).trim();
+          return !line.startsWith('/*') && !line.startsWith('*') && !line.startsWith('//');
+        });
+
+        if (nonCommentMatches.length > 0) {
+          const ruleMatch = nonCommentMatches.find((m) => {
+            const line = currentModel.getLineContent(m.range.startLineNumber).trim();
+            return line.includes('{') || line.startsWith(text);
+          });
+          bestMatch = ruleMatch || nonCommentMatches[0];
+        }
+
+        // Set selection and smoothly center in view
+        ed.setSelection(bestMatch.range);
+        ed.revealRangeInCenter(bestMatch.range, monaco.editor.ScrollType.Smooth);
+        ed.focus();
+
+        // High-contrast line & inline flash decoration
+        if (navDecorations.length > 0) {
+          ed.deltaDecorations(navDecorations, []);
+          navDecorations = [];
+        }
+
+        navDecorations = ed.deltaDecorations([], [
+          {
+            range: bestMatch.range,
+            options: {
+              isWholeLine: true,
+              className: 'target-selector-highlight-flash',
+              inlineClassName: 'target-selector-inline-flash',
+            },
+          },
+        ]);
+
+        if (navTimer) {
+          clearTimeout(navTimer);
+        }
+        navTimer = setTimeout(() => {
+          if (editorInstanceRef.current && navDecorations.length > 0) {
+            editorInstanceRef.current.deltaDecorations(navDecorations, []);
+            navDecorations = [];
+          }
+        }, 2200);
+      };
+
+      executeNavigation();
+      requestAnimationFrame(() => {
+        executeNavigation();
+      });
+    };
+
+    window.addEventListener('vohsa:navigate-to-text', handleNavigateToText);
+
     return () => {
+      if (navTimer) clearTimeout(navTimer);
+      window.removeEventListener('vohsa:navigate-to-text', handleNavigateToText);
       resizeObserver.disconnect();
       changeDisposable.dispose();
       cursorDisposable.dispose();
