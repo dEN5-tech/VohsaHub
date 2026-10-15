@@ -21,7 +21,15 @@ interface DescriptionToken {
 
 function parseDescriptionTokens(description: string): DescriptionToken[] {
   // Matches CSS class (.class), ID (#id), pseudo-classes (:pseudo), tags, <tags>, backticked code
-  const regex = /(`[^`]+`|<[a-zA-Z0-9_-]+>|(?:(?<=[^\w-]|^)[.#][a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?)|(?<=[^\w-]|^):[a-zA-Z0-9_-]+|\b(?:h[1-6]|input|button|header|nav|form|textarea|select|label|section|footer|main)\b(?::[a-zA-Z0-9_-]+)?)/g;
+  // Comprehensive AST-friendly token matching:
+  // 1. `code`
+  // 2. Full HTML tags: <tag>, <tag class="...">, </tag>, <!DOCTYPE html>
+  // 3. Compound / chained CSS classes: .pricing-card.featured, .features, .modal::backdrop, .btn:hover
+  // 4. Standalone pseudo-classes & pseudo-elements: :root, ::backdrop
+  // 5. CSS custom properties / variables: --primary-color, --card-bg
+  // 6. Attribute selectors: [open], [type="email"]
+  // 7. Standalone HTML semantic tags (excluding file extensions like .html or .css)
+  const regex = /(`[^`]+`|<\/?!?[a-zA-Z][a-zA-Z0-9_-]*(?:\s+[^>]*?)?\/?>|(?<=[^\w-]|^)[.#][a-zA-Z0-9_-]+(?:[.#][a-zA-Z0-9_-]+)*(?:::[a-zA-Z0-9_-]+|:[a-zA-Z0-9_-]+)?(?:\[[^\]]+\])?(?:\s+(?:summary|input|button|h[1-6]|a|p|\.[a-zA-Z0-9_-]+))?|(?<=[^\w-]|^)(?:::|:)[a-zA-Z0-9_-]+|(?<=[^\w-]|^)--[a-zA-Z0-9_-]+|(?<=[^\w-]|^)\[[a-zA-Z0-9_-]+(?:=[^\]]+)?\]|(?<![a-zA-Z0-9_-]\.)\b(?:html|body|head|header|nav|main|section|article|aside|footer|dialog|details|summary|div|span|p|a|ul|ol|li|h[1-6]|form|input|button|textarea|select|option|label|progress)\b(?:::[a-zA-Z0-9_-]+|:[a-zA-Z0-9_-]+)?(?![a-zA-Z0-9_.-]))/g;
 
   const tokens: DescriptionToken[] = [];
   let lastIndex = 0;
@@ -44,7 +52,16 @@ function parseDescriptionTokens(description: string): DescriptionToken[] {
     if (isFileExt) {
       tokens.push({ text: matchedStr, isSelector: false });
     } else {
-      const cleanSelector = matchedStr.replace(/^[`<]|[`>]$/g, '');
+      let cleanSelector = matchedStr.replace(/^`|`$/g, '');
+      const classAttr = cleanSelector.match(/class=["']([^"']+)["']/);
+      const idAttr = cleanSelector.match(/id=["']([^"']+)["']/);
+      if (classAttr) {
+        cleanSelector = '.' + classAttr[1].trim().split(/\s+/)[0];
+      } else if (idAttr) {
+        cleanSelector = '#' + idAttr[1].trim();
+      } else if (cleanSelector.startsWith('<') && cleanSelector.endsWith('>')) {
+        cleanSelector = cleanSelector.replace(/^<\/?!?/, '').replace(/\/?>$/, '').trim().split(/\s+/)[0];
+      }
       tokens.push({
         text: matchedStr,
         isSelector: true,

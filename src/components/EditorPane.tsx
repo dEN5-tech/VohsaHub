@@ -294,16 +294,63 @@ export function EditorPane({
         const currentModel = ed.getModel();
         if (!currentModel) return;
 
-        // Try direct find
+        // 1. Try direct find
         let matches = currentModel.findMatches(text, false, false, false, null, true);
 
-        // Fallback for HTML classes/IDs (e.g. .grid-container -> grid-container)
+        // 2. Fallback for HTML classes/IDs (e.g. .grid-container -> grid-container)
         if ((!matches || matches.length === 0) && (text.startsWith('.') || text.startsWith('#'))) {
-          const rawName = text.slice(1);
+          const rawName = text.replace(/^[.#]/, '');
           matches = currentModel.findMatches(rawName, false, false, false, null, true);
         }
 
-        if (!matches || matches.length === 0) return;
+        // 3. Fallback for compound selectors (e.g. .pricing-card.featured)
+        if ((!matches || matches.length === 0) && text.includes('.')) {
+          const parts = text.split('.').filter(Boolean);
+          for (const p of parts) {
+            matches = currentModel.findMatches('.' + p, false, false, false, null, true);
+            if (!matches || matches.length === 0) {
+              matches = currentModel.findMatches(p, false, false, false, null, true);
+            }
+            if (matches && matches.length > 0) break;
+          }
+        }
+
+        // 4. Fallback for descendant / pseudo selectors (e.g. .modal::backdrop, .faq-item summary)
+        if (!matches || matches.length === 0) {
+          const firstWord = text.split(/[:s]+/)[0];
+          if (firstWord && firstWord !== text) {
+            matches = currentModel.findMatches(firstWord, false, false, false, null, true);
+            if ((!matches || matches.length === 0) && firstWord.startsWith('.')) {
+              matches = currentModel.findMatches(firstWord.slice(1), false, false, false, null, true);
+            }
+          }
+        }
+
+        // 5. Fallback for CSS custom properties (e.g. --primary-color -> :root)
+        if ((!matches || matches.length === 0) && text.startsWith('--')) {
+          matches = currentModel.findMatches(':root', false, false, false, null, true);
+        }
+
+        // 6. Intelligent fallback when element is not yet created by student:
+        // Guide cursor to the insertion zone (placeholder comment, container, or end of file)
+        if (!matches || matches.length === 0) {
+          const placeholder = currentModel.findMatches('<!-- Новые блоки', false, false, false, null, true);
+          if (placeholder && placeholder.length > 0) {
+            matches = placeholder;
+          } else {
+            const mainClose = currentModel.findMatches('</main>', false, false, false, null, true);
+            if (mainClose && mainClose.length > 0) {
+              matches = mainClose;
+            } else {
+              const lineCount = currentModel.getLineCount();
+              matches = [{
+                range: new monaco.Range(lineCount, 1, lineCount, 1),
+                _findMatchBrand: undefined as any,
+                matches: null,
+              } as any];
+            }
+          }
+        }
 
         // Prioritize non-comment matches (rule declarations with '{' or code lines)
         let bestMatch = matches[0];

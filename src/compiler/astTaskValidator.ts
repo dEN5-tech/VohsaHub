@@ -48,6 +48,120 @@ export function parseJsTree(code: string): { success: boolean; ast?: any; error?
 // -----------------------------------------------------------------------------
 
 /**
+ * Структура распарсенного сегмента CSS-селектора для HTML AST
+ */
+interface SelectorSegment {
+  tag?: string;
+  id?: string;
+  classes: string[];
+  attributes: { name: string; value?: string }[];
+}
+
+function parseSelectorSegment(segment: string): SelectorSegment {
+  let tag: string | undefined;
+  const classes: string[] = [];
+  const attributes: { name: string; value?: string }[] = [];
+  let id: string | undefined;
+
+  const attrRegex = /\[([a-zA-Z0-9_-]+)(?:=["']?([^"'\]]+)["']?)?\]/g;
+  let attrMatch: RegExpExecArray | null;
+  while ((attrMatch = attrRegex.exec(segment)) !== null) {
+    attributes.push({ name: attrMatch[1], value: attrMatch[2] });
+  }
+  const cleanSeg = segment.replace(attrRegex, '');
+
+  const tagMatch = cleanSeg.match(/^[a-zA-Z0-9_-]+/);
+  if (tagMatch) tag = tagMatch[0];
+
+  const idMatch = cleanSeg.match(/#([a-zA-Z0-9_-]+)/);
+  if (idMatch) id = idMatch[1];
+
+  const classMatches = cleanSeg.matchAll(/\.([a-zA-Z0-9_-]+)/g);
+  for (const cm of classMatches) classes.push(cm[1]);
+
+  return { tag, id, classes, attributes };
+}
+
+function matchesElement(el: any, part: SelectorSegment): boolean {
+  if (!el || !el.tagName) return false;
+
+  if (part.tag && part.tag !== '*' && el.tagName.toLowerCase() !== part.tag.toLowerCase()) {
+    return false;
+  }
+
+  if (part.id) {
+    const hasId = el.attrs?.some((a: any) => a.name === 'id' && a.value === part.id);
+    if (!hasId) return false;
+  }
+
+  if (part.classes.length > 0) {
+    const classAttr = el.attrs?.find((a: any) => a.name === 'class')?.value || '';
+    const classList = classAttr.trim().split(/\s+/);
+    for (const cls of part.classes) {
+      if (!classList.includes(cls)) return false;
+    }
+  }
+
+  if (part.attributes.length > 0) {
+    for (const attr of part.attributes) {
+      const hasAttr = el.attrs?.some(
+        (a: any) => a.name === attr.name && (attr.value === undefined || a.value === attr.value)
+      );
+      if (!hasAttr) return false;
+    }
+  }
+
+  return true;
+}
+
+export function queryHtmlSelector(ast: any, fullSelector: string): any[] {
+  if (!ast) return [];
+  const segments = fullSelector.trim().split(/\s+/).filter(Boolean);
+  if (segments.length === 0) return [];
+
+  const parsedSegments = segments.map(parseSelectorSegment);
+
+  let currentMatched: any[] = [];
+  const collectAll = (node: any) => {
+    if (!node) return;
+    if (matchesElement(node, parsedSegments[0])) {
+      currentMatched.push(node);
+    }
+    if (node.childNodes && Array.isArray(node.childNodes)) {
+      for (const child of node.childNodes) collectAll(child);
+    }
+  };
+  collectAll(ast);
+
+  for (let i = 1; i < parsedSegments.length; i++) {
+    const nextPart = parsedSegments[i];
+    const nextMatched: any[] = [];
+
+    for (const parent of currentMatched) {
+      const collectDescendants = (node: any) => {
+        if (!node) return;
+        if (node.childNodes && Array.isArray(node.childNodes)) {
+          for (const child of node.childNodes) {
+            if (matchesElement(child, nextPart)) {
+              if (!nextMatched.includes(child)) {
+                nextMatched.push(child);
+              }
+            }
+            collectDescendants(child);
+          }
+        }
+      };
+      collectDescendants(parent);
+    }
+
+    currentMatched = nextMatched;
+    if (currentMatched.length === 0) break;
+  }
+
+  return currentMatched;
+}
+
+/**
  * Ищет HTML элементы по имени тега в AST parse5
  */
 export function queryHtmlElements(node: any, tagName: string, results: any[] = []): any[] {
@@ -198,38 +312,24 @@ export function compileCriterionCheck(
       }
     }
 
-    // 4. HTML селектор / тег (parse5)
+    // 4. HTML селектор / тег (parse5 AST с поддержкой вложенности и нескольких классов)
     if (criterion.selector !== undefined) {
       const { ast } = parseHtmlTree(code);
       if (!ast) {
         return { passed: false, message: 'Ошибка разметки HTML' };
       }
       const rawSel = criterion.selector.trim();
-      const tagNameMatch = rawSel.match(/^[a-zA-Z0-9_-]+/);
-      const targetTag = tagNameMatch ? tagNameMatch[0] : '*';
-      const idMatch = rawSel.match(/#([a-zA-Z0-9_-]+)/);
-      const classMatch = rawSel.match(/\.([a-zA-Z0-9_-]+)/);
+      let matched = queryHtmlSelector(ast, rawSel);
 
-      const allElements = queryHtmlElements(ast, targetTag);
-      const matched = allElements.filter((el) => {
-        if (idMatch) {
-          const hasId = el.attrs?.some((a: any) => a.name === 'id' && a.value === idMatch[1]);
-          if (!hasId) return false;
-        }
-        if (classMatch) {
-          const hasCls = el.attrs?.some((a: any) => a.name === 'class' && a.value.includes(classMatch[1]));
-          if (!hasCls) return false;
-        }
-        if (criterion.hasAttribute) {
-          const hasAttr = el.attrs?.some(
+      if (criterion.hasAttribute) {
+        matched = matched.filter((el) =>
+          el.attrs?.some(
             (a: any) =>
               a.name === criterion.hasAttribute?.name &&
               (criterion.hasAttribute?.value === undefined || a.value === criterion.hasAttribute?.value)
-          );
-          if (!hasAttr) return false;
-        }
-        return true;
-      });
+          )
+        );
+      }
 
       if (matched.length === 0) {
         return {
@@ -271,14 +371,31 @@ export function compileCriterionCheck(
           };
         }
         if (criterion.cssProperty) {
-          const prop = getCssProperty(rules[0], criterion.cssProperty);
-          if (!prop) {
+          const propName = criterion.cssProperty.toLowerCase();
+          const ruleWithProp = rules.find((r) => getCssProperty(r, propName) !== undefined);
+          if (!ruleWithProp) {
             return {
               passed: false,
-              message: criterion.message || `Свойство "${criterion.cssProperty}" отсутствует в ${criterion.cssSelector}`,
+              message: criterion.message || `Свойство "${criterion.cssProperty}" отсутствует в "${criterion.cssSelector}"`,
               line: rules[0].loc?.start?.line,
             };
           }
+          if (criterion.cssValue) {
+            const decl = getCssProperty(ruleWithProp, propName);
+            const valStr = csstree.generate(decl.value).trim().toLowerCase();
+            if (!valStr.includes(criterion.cssValue.toLowerCase())) {
+              return {
+                passed: false,
+                message: criterion.message || `Значение "${criterion.cssValue}" не совпадает в "${criterion.cssSelector}"`,
+                line: decl.loc?.start?.line || ruleWithProp.loc?.start?.line,
+              };
+            }
+          }
+          return {
+            passed: true,
+            message: criterion.message || `CSS свойство "${criterion.cssProperty}" подтверждено в "${criterion.cssSelector}"`,
+            line: ruleWithProp.loc?.start?.line,
+          };
         }
         return {
           passed: true,
