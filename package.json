@@ -30,6 +30,7 @@
     "framer-motion": "^14.1.0",
     "lucide-preact": "^1.55.0",
     "monaco-editor": "^0.57.0",
+    "monaco-jsx-syntax-highlight": "^1.2.4",
     "parse5": "^8.0.1",
     "preact": "^11.0.1"
   }

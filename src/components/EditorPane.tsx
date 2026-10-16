@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { monaco } from '../monacoSetup';
+import { monaco, getJsxSyntaxHighlighter } from '../monacoSetup';
 import { Plus, X, ChevronRight, Sparkles } from 'lucide-preact';
 import { getFileIcon } from './Explorer';
 import { findVirtualFile, type VirtualFile } from '../compiler/templateEngine';
@@ -21,7 +21,10 @@ interface EditorPaneProps {
 }
 
 function getFileLanguage(fileName: string): string {
-  if (fileName.endsWith('.eta') || fileName.endsWith('.html') || fileName.endsWith('.vue')) return 'html';
+  if (fileName.endsWith('.vue')) return 'vue';
+  if (fileName.endsWith('.jsx')) return 'javascript';
+  if (fileName.endsWith('.tsx')) return 'typescript';
+  if (fileName.endsWith('.eta') || fileName.endsWith('.html')) return 'html';
   if (fileName.endsWith('.json')) return 'json';
   if (fileName.endsWith('.css') || fileName.endsWith('.scss')) return 'css';
   if (fileName.endsWith('.js') || fileName.endsWith('.mjs')) return 'javascript';
@@ -152,6 +155,38 @@ export function EditorPane({
 
     editorInstanceRef.current = editor;
 
+    // JSX / TSX syntax highlighter instance
+    let jsxHighlighterDisposable: { highlighter: (code?: string) => void; dispose: () => void } | null = null;
+
+    const runJsxHighlight = () => {
+      const ed = editorInstanceRef.current;
+      if (!ed) return;
+      const currentName = (activeFileNameRef.current || '').toLowerCase();
+      if (currentName.endsWith('.jsx') || currentName.endsWith('.tsx')) {
+        try {
+          if (!jsxHighlighterDisposable) {
+            const factory = getJsxSyntaxHighlighter();
+            if (factory) {
+              jsxHighlighterDisposable = factory.highlighterBuilder({
+                editor: ed,
+                filePath: activeFileNameRef.current,
+              });
+            }
+          }
+          jsxHighlighterDisposable?.highlighter();
+        } catch (err) {
+          console.warn('JSX highlight warning:', err);
+        }
+      } else if (jsxHighlighterDisposable) {
+        try {
+          jsxHighlighterDisposable.dispose();
+        } catch (_) {}
+        jsxHighlighterDisposable = null;
+      }
+    };
+
+    runJsxHighlight();
+
     // Listen to changes on active editor model through ref to prevent stale closures
     const changeDisposable = editor.onDidChangeModelContent(() => {
       const currentModel = editor.getModel();
@@ -162,6 +197,7 @@ export function EditorPane({
           const val = currentModel.getValue();
           isInternalChangeRef.current = true;
           onFileChangeRef.current(name, val);
+          runJsxHighlight();
           break;
         }
       }
@@ -176,7 +212,7 @@ export function EditorPane({
     });
 
     // Register custom LinkProvider to enable "Follow link (Ctrl + click)" for virtual files
-    const supportedLanguages = ['html', 'css', 'javascript', 'typescript'];
+    const supportedLanguages = ['html', 'css', 'javascript', 'typescript', 'vue'];
     const linkProviderDisposables: monaco.IDisposable[] = [];
 
     supportedLanguages.forEach((lang) => {
@@ -460,6 +496,20 @@ export function EditorPane({
         const pos = editorInstanceRef.current.getPosition();
         if (pos) {
           onCursorChangeRef.current({ line: pos.lineNumber, col: pos.column });
+        }
+      }
+      // Trigger JSX highlighting on active model change
+      const cur = (activeFileName || '').toLowerCase();
+      if (cur.endsWith('.jsx') || cur.endsWith('.tsx')) {
+        const factory = getJsxSyntaxHighlighter();
+        if (factory) {
+          try {
+            const h = factory.highlighterBuilder({
+              editor: editorInstanceRef.current,
+              filePath: activeFileName,
+            });
+            h.highlighter();
+          } catch (_) {}
         }
       }
     }

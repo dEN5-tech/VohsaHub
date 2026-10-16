@@ -3146,3 +3146,44 @@ html, body {
 }
 
 
+
+/* ==========================================================================
+   Monaco JSX / TSX Syntax Highlighting
+   ========================================================================== */
+.jsx-tag-angle-bracket {
+  color: #71717a !important;
+}
+
+.jsx-tag-name {
+  color: #2dd4bf !important;
+  font-weight: 500;
+}
+
+.jsx-tag-attribute-key {
+  color: #38bdf8 !important;
+}
+
+.jsx-expression-braces {
+  color: #fb7185 !important;
+  font-weight: bold;
+}
+
+.jsx-text {
+  color: #f4f4f5 !important;
+}
+
+.jsx-tag-order-0 {
+  color: #2dd4bf !important;
+}
+
+.jsx-tag-order-1 {
+  color: #38bdf8 !important;
+}
+
+.jsx-tag-order-2 {
+  color: #a78bfa !important;
+}
+
+.jsx-tag-order-3 {
+  color: #f472b6 !important;
+}

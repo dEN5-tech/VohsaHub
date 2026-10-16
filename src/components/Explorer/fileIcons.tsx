@@ -29,6 +29,12 @@ export function getFileIcon(fileName: string, size = 14) {
       </svg>
     );
   }
+  if (fileName.endsWith('.jsx')) {
+    return <FileCode size={size} color="#61dafb" />;
+  }
+  if (fileName.endsWith('.tsx')) {
+    return <FileCode size={size} color="#38bdf8" />;
+  }
   if (fileName.endsWith('.eta') || fileName.endsWith('.html')) {
     return <FileCode size={size} color="var(--chakra-colors-teal-fg, #14b8a6)" />;
   }

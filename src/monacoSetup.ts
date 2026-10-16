@@ -1,7 +1,141 @@
 import * as monaco from 'monaco-editor';
 import { html, css, json, typescript } from 'monaco-editor';
+import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
+import { MonacoJsxSyntaxHighlight, getWorker } from 'monaco-jsx-syntax-highlight';
 
-// Конфигурируем веб-воркеры Monaco через относительный путь к node_modules
+// Vue Single File Component (.vue) language configuration
+export const vueLanguageConfiguration: monaco.languages.LanguageConfiguration = {
+  comments: {
+    blockComment: ['<!--', '-->'],
+  },
+  brackets: [
+    ['<!--', '-->'],
+    ['<', '>'],
+    ['{', '}'],
+    ['(', ')'],
+    ['[', ']'],
+  ],
+  autoClosingPairs: [
+    { open: '{', close: '}' },
+    { open: '[', close: ']' },
+    { open: '(', close: ')' },
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '`', close: '`' },
+    { open: '<!--', close: '-->', notIn: ['comment', 'string'] },
+    { open: '<', close: '>', notIn: ['string'] },
+  ],
+  surroundingPairs: [
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '{', close: '}' },
+    { open: '[', close: ']' },
+    { open: '(', close: ')' },
+    { open: '<', close: '>' },
+  ],
+  folding: {
+    markers: {
+      start: new RegExp('^\\s*<!--\\s*#region\\b.*-->'),
+      end: new RegExp('^\\s*<!--\\s*#endregion\\b.*-->'),
+    },
+  },
+};
+
+// Vue Monarch Tokenizer with embedded JavaScript & CSS
+export const vueMonarchTokensProvider: monaco.languages.IMonarchLanguage = {
+  defaultToken: '',
+  tokenPostfix: '.vue',
+  ignoreCase: false,
+
+  keywords: [
+    'v-if', 'v-else-if', 'v-else', 'v-for', 'v-on', 'v-bind', 'v-model',
+    'v-slot', 'v-show', 'v-cloak', 'v-pre', 'v-once', 'v-memo', 'v-html', 'v-text',
+    'template', 'script', 'style', 'setup'
+  ],
+
+  tokenizer: {
+    root: [
+      [/<!--/, 'comment', '@comment'],
+      [
+        /(<)(script)(.*)(>)/,
+        [
+          { token: 'delimiter.html' },
+          { token: 'tag' },
+          { token: 'attribute.name' },
+          { token: 'delimiter.html', next: '@scriptEmbedded', nextEmbedded: 'javascript' },
+        ],
+      ],
+      [
+        /(<)(style)(.*)(>)/,
+        [
+          { token: 'delimiter.html' },
+          { token: 'tag' },
+          { token: 'attribute.name' },
+          { token: 'delimiter.html', next: '@styleEmbedded', nextEmbedded: 'css' },
+        ],
+      ],
+      [/\{\{/, { token: 'delimiter.bracket', next: '@interpolation', nextEmbedded: 'javascript' }],
+      [/<\/?[a-zA-Z0-9_\-]+/, 'tag', '@tagContent'],
+      [/[^<{]+/, ''],
+    ],
+
+    tagContent: [
+      [/\/>/, 'delimiter.html', '@pop'],
+      [/>/, 'delimiter.html', '@pop'],
+      [/(@|:|#)[a-zA-Z0-9_\-.:]+/, 'keyword'],
+      [/v-[a-zA-Z0-9_\-.:]+/, 'keyword'],
+      [/[a-zA-Z0-9_\-]+/, 'attribute.name'],
+      [/=\s*"([^"]*)"/, 'attribute.value'],
+      [/=\s*'([^']*)'/, 'attribute.value'],
+      [/=\s*([^\s>]+)/, 'attribute.value'],
+      [/\s+/, 'white'],
+    ],
+
+    comment: [
+      [/-->/, 'comment', '@pop'],
+      [/[^-]+/, 'comment'],
+      [/[-]/, 'comment'],
+    ],
+
+    scriptEmbedded: [
+      [/<\/script>/, { token: '@rematch', next: '@pop', nextEmbedded: '@pop' }],
+    ],
+
+    styleEmbedded: [
+      [/<\/style>/, { token: '@rematch', next: '@pop', nextEmbedded: '@pop' }],
+    ],
+
+    interpolation: [
+      [/\}\}/, { token: 'delimiter.bracket', next: '@pop', nextEmbedded: '@pop' }],
+    ],
+  },
+};
+
+// Register Vue language
+try {
+  monaco.languages.register({ id: 'vue', extensions: ['.vue'] });
+  monaco.languages.setLanguageConfiguration('vue', vueLanguageConfiguration);
+  monaco.languages.setMonarchTokensProvider('vue', vueMonarchTokensProvider);
+} catch (vueErr) {
+  console.warn('Vue language registration error:', vueErr);
+}
+
+// Singleton for JSX / TSX syntax highlighter
+let jsxSyntaxHighlighterInstance: MonacoJsxSyntaxHighlight | null = null;
+
+export function getJsxSyntaxHighlighter(): MonacoJsxSyntaxHighlight | null {
+  if (typeof window === 'undefined') return null;
+  if (!jsxSyntaxHighlighterInstance) {
+    try {
+      jsxSyntaxHighlighterInstance = new MonacoJsxSyntaxHighlight(getWorker(), monaco);
+    } catch (err) {
+      console.warn('MonacoJsxSyntaxHighlight initialization warning:', err);
+    }
+  }
+  return jsxSyntaxHighlighterInstance;
+}
+
+// Configure Monaco web workers via relative path to node_modules
 // @ts-ignore
 window.MonacoEnvironment = {
   getWorker(_: any, label: string) {
@@ -11,7 +145,7 @@ window.MonacoEnvironment = {
         { type: 'module' }
       );
     }
-    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+    if (label === 'html' || label === 'handlebars' || label === 'razor' || label === 'vue') {
       return new Worker(
         new URL('../node_modules/monaco-editor/esm/vs/language/html/html.worker.js', import.meta.url),
         { type: 'module' }
@@ -23,7 +157,7 @@ window.MonacoEnvironment = {
         { type: 'module' }
       );
     }
-    if (label === 'typescript' || label === 'javascript') {
+    if (label === 'typescript' || label === 'javascript' || label === 'jsx' || label === 'tsx') {
       return new Worker(
         new URL('../node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js', import.meta.url),
         { type: 'module' }
@@ -36,9 +170,9 @@ window.MonacoEnvironment = {
   },
 };
 
-// Конфигурируем автодополнение (IntelliSense) и линтинг в Web Workers
+// Configure IntelliSense and linting in Web Workers
 try {
-  // Настройка HTML Worker (автозакрытие тегов, подсказки тегов/атрибутов, форматирование)
+  // HTML Worker setup (auto closing tags, tag/attribute suggestions, formatting)
   html?.htmlDefaults?.setOptions({
     format: {
       tabSize: 2,
@@ -59,7 +193,7 @@ try {
     },
   });
 
-  // Настройка CSS Worker (подсказки селекторов, свойств, валидация)
+  // CSS Worker setup (selector and property hints, validation)
   css?.cssDefaults?.setOptions({
     validate: true,
     lint: {
@@ -84,9 +218,9 @@ try {
     },
   });
 
-  // Настройка JS/TS Worker (поддержка современного ESNext, DOM-типов и автодополнения)
+  // Настройка JS/TS Worker (Настройка Настройка ESNext, DOM-Настройка, JSX/TSX)
   typescript?.javascriptDefaults?.setDiagnosticsOptions({
-    noSemanticValidation: false,
+    noSemanticValidation: true,
     noSyntaxValidation: false,
   });
 
@@ -94,13 +228,30 @@ try {
     target: typescript.ScriptTarget.ESNext,
     allowNonTextFiles: true,
     allowJs: true,
-    checkJs: true,
+    checkJs: false,
     alwaysStrict: false,
     noImplicitAny: false,
     allowSyntheticDefaultImports: true,
+    jsx: typescript.JsxEmit.React,
   });
 
-  // Настройка JSON Worker (валидация, отключаем внешние сетевые/схемные запросы)
+  typescript?.typescriptDefaults?.setDiagnosticsOptions({
+    noSemanticValidation: true,
+    noSyntaxValidation: false,
+  });
+
+  typescript?.typescriptDefaults?.setCompilerOptions({
+    target: typescript.ScriptTarget.ESNext,
+    allowNonTextFiles: true,
+    allowJs: true,
+    checkJs: false,
+    alwaysStrict: false,
+    noImplicitAny: false,
+    allowSyntheticDefaultImports: true,
+    jsx: typescript.JsxEmit.React,
+  });
+
+  // Настройка JSON Worker (Настройка, Настройка Настройка Настройка/Настройка Настройка)
   json?.jsonDefaults?.setDiagnosticsOptions({
     validate: true,
     allowComments: true,
@@ -112,12 +263,12 @@ try {
   console.warn('Monaco language defaults setup warning:', e);
 }
 
-// Защита от несанкционированного открытия file:/// ссылок в браузере
+// Настройка ?? Настройка Настройка file:/// Настройка ? Настройка
 try {
   monaco.editor.registerEditorOpener({
     openCodeEditor(_source, resource) {
       if (resource.scheme === 'file') {
-        return true; // блокируем попытки перехода на системную файловую систему
+        return true; // Настройка Настройка Настройка ?? Настройка Настройка Настройка
       }
       return false;
     },
@@ -126,13 +277,11 @@ try {
   // ignore
 }
 
-// Подключаем Emmet плагин для быстрой генерации HTML / CSS / JSX аббревиатур
-import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
-
+// Настройка Emmet Настройка ??? Настройка Настройка HTML / CSS / JSX Настройка
 try {
-  emmetHTML(monaco, ['html', 'handlebars', 'razor']);
+  emmetHTML(monaco, ['html', 'handlebars', 'razor', 'vue']);
   emmetCSS(monaco, ['css', 'scss', 'less']);
-  emmetJSX(monaco, ['javascript', 'typescript', 'javascriptreact', 'typescriptreact']);
+  emmetJSX(monaco, ['javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'jsx', 'tsx']);
 } catch (emmetErr) {
   console.warn('Emmet initialization warning:', emmetErr);
 }
