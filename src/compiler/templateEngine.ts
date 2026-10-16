@@ -203,19 +203,19 @@ function resolveHtmlRelativePaths(
     }
 
     const matched = findVirtualFile(src, files);
-    const isBabel = /type=["']text\/babel["']/i.test(before) || /type=["']text\/babel["']/i.test(after) || (matched && (matched.name.endsWith('.jsx') || matched.name.endsWith('.tsx')));
-    const isModule = /type=["']module["']/i.test(before) || /type=["']module["']/i.test(after);
-
     if (matched) {
       linkedJsFiles.add(matched.name);
       const safeJs = matched.content.replace(/<\/script/gi, '<\\/script');
-      if (isBabel) {
-        return `<script type="text/babel" data-presets="react" data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS Babel JSX: ${matched.name}] */\n${safeJs}\n<\/script>`;
+
+      // Полностью библиотечно-независимая обработка: сохраняем все атрибуты тега (type="module", type="text/babel", async и т.д.)
+      const rawAttrs = `${before} ${after}`.trim().replace(/\s+/g, ' ');
+      const isCustomType = /type=["']/i.test(rawAttrs) && !/type=["'](text\/javascript|application\/javascript)["']/i.test(rawAttrs);
+      const attrsPrefix = rawAttrs ? `${rawAttrs} ` : '';
+
+      if (isCustomType) {
+        return `<script ${attrsPrefix}data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS: ${matched.name}] */\n${safeJs}\n<\/script>`;
       }
-      if (isModule) {
-        return `<script type="module" data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS Module: ${matched.name}] */\n${safeJs}\n<\/script>`;
-      }
-      return `<script data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS: ${matched.name}] */\ntry {\n${safeJs}\n} catch (err) {\nconsole.error('[Script Error in ' + "${matched.name}" + ']', err.message || err);\n}\n<\/script>`;
+      return `<script ${attrsPrefix}data-vfs-src="${src}" data-vfs-file="${matched.name}">\n/* [VFS: ${matched.name}] */\ntry {\n${safeJs}\n} catch (err) {\nconsole.error('[Script Error in ' + "${matched.name}" + ']', err.message || err);\n}\n<\/script>`;
     } else {
       return `<!-- [VFS 404] Не найден файл скрипта: "${src}" -->\n<script>console.warn('[VFS 404] Файл скрипта не найден: "${src}"');<\/script>`;
     }
@@ -456,11 +456,6 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
     .map((f) => `/* [Auto-injected: ${f.name}] */\n${f.content.replace(/<\/style/gi, '<\\/style')}`)
     .join('\n\n');
 
-  const unlinkedBabel = files
-    .filter((f) => (f.name.endsWith('.jsx') || f.name.endsWith('.tsx')) && !linkedJsFiles.has(f.name))
-    .map((f) => `<script type="text/babel" data-presets="react" data-vfs-auto="true">\n/* [Auto-injected JSX: ${f.name}] */\n${f.content.replace(/<\/script/gi, '<\\/script')}\n<\/script>`)
-    .join('\n\n');
-
   const unlinkedJs = files
     .filter((f) => (f.name.endsWith('.js') || f.name.endsWith('.ts')) && !linkedJsFiles.has(f.name))
     .map((f) => `/* [Auto-injected: ${f.name}] */\ntry {\n${f.content.replace(/<\/script/gi, '<\\/script')}\n} catch(e) { console.error(e); }`)
@@ -494,7 +489,7 @@ export function compileSandboxBundle(files: VirtualFile[]): CompilationResult {
 
     // Вставляем unlinked JS перед закрывающим </body>
     if (unlinkedJs) {
-      const jsBlock = `${unlinkedBabel ? `\n  ${unlinkedBabel}\n` : ''}${unlinkedJs ? `\n  <script data-vfs-auto="true">\n${unlinkedJs}\n  <\/script>\n` : ''}`;
+      const jsBlock = `${unlinkedJs ? `\n  <script data-vfs-auto="true">\n${unlinkedJs}\n  <\/script>\n` : ''}`;
       if (/<\/body>/i.test(doc)) {
         doc = doc.replace(/<\/body>/i, () => `${jsBlock}</body>`);
       } else {

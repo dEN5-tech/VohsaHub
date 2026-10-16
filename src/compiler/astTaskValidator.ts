@@ -686,7 +686,7 @@ export function validateLearningTask(task: LearningTask, files: VirtualFile[]): 
     syntaxLine = parsed.line;
     syntaxColumn = parsed.column;
   } else if (task.targetFile.endsWith('.jsx') || task.targetFile.endsWith('.tsx')) {
-    parserName = 'Babel Standalone (JSX)';
+    parserName = 'JSX / Template';
     syntaxValid = true;
   } else if (task.targetFile.endsWith('.js') || task.targetFile.endsWith('.ts')) {
     parserName = 'Acorn (ESTree)';
