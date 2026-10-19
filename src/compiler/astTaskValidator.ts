@@ -227,6 +227,315 @@ export function getCssProperty(ruleNode: any, propertyName: string): any | undef
 /**
  * Обходит JS AST (ESTree от Acorn)
  */
+
+/**
+ * Проверяет общую синтаксическую и семантическую корректность значения CSS свойства
+ */
+export function checkGeneralCssValueValidity(
+  prop: string,
+  val: string
+): { valid: boolean; reason?: string } {
+  const p = prop.toLowerCase();
+  const v = val.toLowerCase().trim();
+
+  // Глобальные допустимые ключевые слова CSS
+  if (['inherit', 'initial', 'unset', 'revert', 'revert-layer'].includes(v)) {
+    return { valid: true };
+  }
+
+  switch (p) {
+    case 'display': {
+      const allowed = [
+        'block', 'inline', 'inline-block', 'flex', 'inline-flex',
+        'grid', 'inline-grid', 'none', 'contents', 'table',
+        'table-row', 'table-cell', 'list-item', 'flow-root'
+      ];
+      if (!allowed.includes(v)) {
+        return {
+          valid: false,
+          reason: `"${val}" не является допустимым типом отображения (ожидались: grid, flex, inline-block, block и т.д.).`,
+        };
+      }
+      break;
+    }
+
+    case 'cursor': {
+      const allowed = [
+        'pointer', 'default', 'auto', 'none', 'help', 'wait',
+        'crosshair', 'not-allowed', 'grab', 'grabbing', 'move', 'text', 'zoom-in', 'zoom-out'
+      ];
+      if (!allowed.includes(v)) {
+        return {
+          valid: false,
+          reason: `"${val}" не является допустимым значением курсора (ожидались: pointer, default, not-allowed и т.д.).`,
+        };
+      }
+      break;
+    }
+
+    case 'grid-template-columns':
+    case 'grid-template-rows': {
+      const hasTrack = /(repeat|minmax|fit-content|\d+(?:fr|px|rem|em|%|vw|vh)|auto|none)/i.test(v);
+      if (!hasTrack) {
+        return {
+          valid: false,
+          reason: `Значение не является корректным шаблоном колонок сетки (ожидались: fr, px, repeat(2, 1fr) и т.д.).`,
+        };
+      }
+      break;
+    }
+
+    case 'gap':
+    case 'row-gap':
+    case 'column-gap': {
+      const hasUnit = /(normal|0|\d+(?:\.\d+)?(?:px|rem|em|%|vh|vw|ch)|calc|var|min|max|clamp)/i.test(v);
+      if (!hasUnit) {
+        return {
+          valid: false,
+          reason: `Интервал gap должен содержать размер с единицами измерения (например: 16px, 1.5rem, 20px).`,
+        };
+      }
+      break;
+    }
+
+    case 'border-radius': {
+      const hasUnit = /(0|\d+(?:\.\d+)?(?:px|rem|em|%|vh|vw)|calc|var)/i.test(v);
+      if (!hasUnit) {
+        return {
+          valid: false,
+          reason: `Радиус скругления border-radius должен содержать число с единицами измерения (например: 8px, 12px, 50%, 9999px).`,
+        };
+      }
+      break;
+    }
+
+    case 'padding':
+    case 'margin':
+    case 'font-size':
+    case 'width':
+    case 'height':
+    case 'min-width':
+    case 'max-width': {
+      const hasUnit = /(auto|none|0|\d+(?:\.\d+)?(?:px|rem|em|%|vh|vw|ch|pt)|calc|var|fit-content|max-content)/i.test(v);
+      if (!hasUnit) {
+        return {
+          valid: false,
+          reason: `Значение свойства "${prop}" должно содержать размер с единицами измерения (px, rem, % и т.д.).`,
+        };
+      }
+      break;
+    }
+
+    case 'color':
+    case 'background-color':
+    case 'border-color': {
+      const isColor = /(#|rgba?|hsla?|transparent|currentcolor|var\(--|[a-z]{3,})/i.test(v);
+      if (!isColor) {
+        return {
+          valid: false,
+          reason: `Значение должно быть цветом (HEX #..., rgb(...), var(...) или именем цвета).`,
+        };
+      }
+      break;
+    }
+
+    case 'transition': {
+      const hasTiming = /(0|\d+(?:\.\d+)?(?:s|ms)|all|ease|linear|cubic-bezier)/i.test(v);
+      if (!hasTiming) {
+        return {
+          valid: false,
+          reason: `Переход transition должен содержать время (например: all 0.2s ease или 300ms).`,
+        };
+      }
+      break;
+    }
+
+    case 'box-shadow': {
+      const hasShadow = /(none|0|\d+(?:\.\d+)?(?:px|rem|em)|rgba?|#[0-9a-fA-F]|inset)/i.test(v);
+      if (!hasShadow) {
+        return {
+          valid: false,
+          reason: `Тень box-shadow должна содержать смещения (например: 0 4px 6px rgba(0,0,0,0.1)).`,
+        };
+      }
+      break;
+    }
+
+    case 'text-decoration':
+    case 'text-decoration-line': {
+      const hasDec = /(none|underline|overline|line-through)/i.test(v);
+      if (!hasDec) {
+        return {
+          valid: false,
+          reason: `Значение text-decoration должно быть none, underline или line-through.`,
+        };
+      }
+      break;
+    }
+  }
+
+  // Значение не должно состоять только из спецсимволов или бессмысленных знаков
+  if (v.length < 1 || /^[^a-zA-Z0-9#]+$/.test(v)) {
+    return {
+      valid: false,
+      reason: `Значение "${val}" некорректно.`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Валидирует значение CSS свойства против критерия задания
+ */
+export function validateCssPropertyValue(
+  decl: any,
+  ruleNode: any,
+  propName: string,
+  criterion: TaskCriterion
+): { passed: boolean; message?: string; line?: number } {
+  const line = decl.loc?.start?.line || ruleNode.loc?.start?.line;
+  if (!decl.value) {
+    return {
+      passed: false,
+      message: `Свойство "${criterion.cssProperty}" в селекторе "${criterion.cssSelector}" не имеет значения.`,
+      line,
+    };
+  }
+
+  const rawVal = csstree.generate(decl.value).trim();
+  if (!rawVal || rawVal === '') {
+    return {
+      passed: false,
+      message: `Свойство "${criterion.cssProperty}" в селекторе "${criterion.cssSelector}" пустое.`,
+      line,
+    };
+  }
+
+  const normActual = rawVal.toLowerCase().replace(/\s+/g, ' ').replace(/\s*;\s*$/, '').trim();
+
+  // 1. Определение списка допустимых вариантов значений
+  let expectedOptions: string[] = [];
+
+  if (criterion.cssValues && Array.isArray(criterion.cssValues) && criterion.cssValues.length > 0) {
+    expectedOptions = criterion.cssValues.map((v) => v.toLowerCase().trim());
+  } else if (criterion.cssValue) {
+    expectedOptions = criterion.cssValue
+      .split('|')
+      .map((v) => v.toLowerCase().trim())
+      .filter(Boolean);
+  } else {
+    // 2. Интеллектуальное извлечение требований из описания и подсказок критерия
+    const context = `${criterion.message || ''} ${criterion.description || ''}`.toLowerCase();
+
+    // А. Поиск явной сигнатуры "свойство: значение" в тексте сообщения
+    const propEscaped = propName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\export function walkJsAst');
+    const directPattern = new RegExp(`${propEscaped}\\s*:\\s*([^;,.!\\n]+)`, 'i');
+    const directMatch = context.match(directPattern);
+    if (directMatch && directMatch[1]) {
+      const candidate = directMatch[1].trim().toLowerCase();
+      if (!candidate.includes('...') && !candidate.includes('значение') && !candidate.includes('любое')) {
+        expectedOptions = candidate.split('|').map((v) => v.trim()).filter(Boolean);
+      }
+    }
+
+    // Б. Семантические ключевые подсказки
+    if (expectedOptions.length === 0) {
+      if (propName === 'display') {
+        if (context.includes('строчно-блочн') || context.includes('inline-block')) {
+          expectedOptions = ['inline-block', 'inline-flex'];
+        } else if (context.includes('сетк') || context.includes('grid') || context.includes('двумерн')) {
+          expectedOptions = ['grid', 'inline-grid'];
+        } else if (context.includes('флекс') || context.includes('flex')) {
+          expectedOptions = ['flex', 'inline-flex'];
+        } else if (context.includes('скрыт') || context.includes('убрать') || context.includes('none')) {
+          expectedOptions = ['none'];
+        }
+      } else if (propName === 'text-decoration') {
+        if (context.includes('уберите') || context.includes('отключ') || context.includes('без') || context.includes('none')) {
+          expectedOptions = ['none'];
+        }
+      } else if (propName === 'outline') {
+        if (context.includes('уберите') || context.includes('отключ') || context.includes('без') || context.includes('none')) {
+          expectedOptions = ['none', '0'];
+        }
+      } else if (propName === 'cursor') {
+        if (context.includes('указател') || context.includes('курсор') || context.includes('pointer')) {
+          expectedOptions = ['pointer'];
+        }
+      }
+    }
+  }
+
+  // 3. Проверка по regex, если задан
+  if (criterion.cssValueRegex) {
+    try {
+      const rx = new RegExp(criterion.cssValueRegex, 'i');
+      if (!rx.test(normActual)) {
+        return {
+          passed: false,
+          message:
+            criterion.message ||
+            `Значение "${rawVal}" свойства "${criterion.cssProperty}" в "${criterion.cssSelector}" не соответствует требуемому формату.`,
+          line,
+        };
+      }
+      return {
+        passed: true,
+        message: criterion.message || `CSS свойство "${criterion.cssProperty}: ${rawVal}" подтверждено в "${criterion.cssSelector}"`,
+        line,
+      };
+    } catch (e: any) {
+      // fallback
+    }
+  }
+
+  // 4. Если заданы или выведены ожидаемые значения
+  if (expectedOptions.length > 0) {
+    const isMatched = expectedOptions.some((opt) => {
+      if (opt === normActual) return true;
+      if (normActual.startsWith(opt) || normActual.endsWith(opt)) return true;
+      if (normActual.includes(opt)) return true;
+      return false;
+    });
+
+    if (!isMatched) {
+      const optionsDisplay = expectedOptions.join(' или ');
+      return {
+        passed: false,
+        message:
+          criterion.message ||
+          `Для селектора "${criterion.cssSelector}" свойство "${criterion.cssProperty}" имеет значение "${rawVal}", но ожидалось: "${optionsDisplay}".`,
+        line,
+      };
+    }
+
+    return {
+      passed: true,
+      message: criterion.message || `CSS свойство "${criterion.cssProperty}: ${rawVal}" подтверждено в "${criterion.cssSelector}"`,
+      line,
+    };
+  }
+
+  // 5. Общая семантическая валидация корректности CSS значения
+  const validity = checkGeneralCssValueValidity(propName, normActual);
+  if (!validity.valid) {
+    return {
+      passed: false,
+      message:
+        criterion.message ||
+        `Значение "${rawVal}" для свойства "${criterion.cssProperty}" в "${criterion.cssSelector}" некорректно: ${validity.reason}`,
+      line,
+    };
+  }
+
+  return {
+    passed: true,
+    message: criterion.message || `CSS свойство "${criterion.cssProperty}: ${rawVal}" подтверждено в "${criterion.cssSelector}"`,
+    line,
+  };
+}
+
 export function walkJsAst(node: any, visitor: (n: any) => boolean | void) {
   if (!node || typeof node !== 'object') return;
   const stop = visitor(node);

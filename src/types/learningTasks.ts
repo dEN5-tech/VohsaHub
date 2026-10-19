@@ -32,6 +32,8 @@ export interface DeclarativeCriterion {
   cssSelector?: string;
   cssProperty?: string;
   cssValue?: string;
+  cssValues?: string[];
+  cssValueRegex?: string;
   // JS проверки (acorn)
   variableDeclared?: string;
   // Вычисляемое выражение
