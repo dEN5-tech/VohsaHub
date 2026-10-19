@@ -155,6 +155,11 @@ export function EditorPane({
       parameterHints: {
         enabled: true,
       },
+      inlayHints: {
+        enabled: 'on',
+        fontSize: 11,
+        fontFamily: 'inherit',
+      },
       autoClosingBrackets: 'always',
       autoClosingQuotes: 'always',
       formatOnType: true,
@@ -763,12 +768,35 @@ export function EditorPane({
 
     // Criteria failures
     taskValidationResult.criteriaResults
-      .filter((c) => !c.passed && c.message)
+      .filter((c) => !c.passed)
       .forEach((c) => {
-        const line = c.line || 1;
+        let line = c.line || 1;
+        // Интеллектуальный поиск подходящей строки в httpd.conf / Apache файлах
+        if (activeFileName.toLowerCase().endsWith('.conf') || activeFileName.toLowerCase().includes('htaccess')) {
+          const desc = (c.description || '').toLowerCase();
+          const lineCount = model.getLineCount();
+          for (let l = 1; l <= lineCount; l++) {
+            const lineText = model.getLineContent(l);
+            if (desc.includes('rewriteengine') && /RewriteEngine/i.test(lineText)) {
+              line = l;
+              break;
+            } else if (desc.includes('user') && /user/i.test(lineText)) {
+              line = l;
+              break;
+            } else if ((desc.includes('item') || desc.includes('slug')) && /item/i.test(lineText)) {
+              line = l;
+              break;
+            } else if (desc.includes('rewriterule') && /RewriteRule/i.test(lineText)) {
+              line = l;
+              break;
+            }
+          }
+        }
+
+        const msg = c.message || c.description;
         markers.push({
           severity: monaco.MarkerSeverity.Warning,
-          message: `[Задание] ${c.message}`,
+          message: `[Подсказка] ${msg}`,
           startLineNumber: line,
           startColumn: c.column || 1,
           endLineNumber: line,

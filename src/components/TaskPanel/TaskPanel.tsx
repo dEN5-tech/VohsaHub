@@ -1,5 +1,8 @@
 import { useState } from 'preact/hooks';
 import {
+  Lightbulb,
+  ChevronDown,
+  ChevronUp,
   GraduationCap,
   CheckCircle2,
   Play,
@@ -136,6 +139,7 @@ export function TaskPanel({
 
   // Form state for creating custom task
   const [newTitle, setNewTitle] = useState('');
+  const [showHint, setShowHint] = useState(false);
   const [newTargetFile, setNewTargetFile] = useState(files[0]?.name || 'index.html');
   const [newDescription, setNewDescription] = useState('');
   const [newRequirement, setNewRequirement] = useState('');
@@ -445,6 +449,45 @@ export function TaskPanel({
                 )}
               </p>
             </div>
+
+            {/* Интерактивная подсказка к уроку */}
+            {currentTask.hint && (
+              <div class="task-hint-box">
+                <button
+                  type="button"
+                  class="task-hint-toggle-btn"
+                  onClick={() => setShowHint(!showHint)}
+                  title="Показать подсказку к уроку"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Lightbulb size={13} color="#fbbf24" />
+                    <span>Подсказка к уроку</span>
+                  </div>
+                  {showHint ? <ChevronUp size={13} color="#fbbf24" /> : <ChevronDown size={13} color="#fbbf24" />}
+                </button>
+                {showHint && (
+                  <div class="task-hint-content">
+                    <p class="task-hint-text">
+                      {renderDescriptionWithClickableSelectors(
+                        currentTask.hint,
+                        currentTask.targetFile,
+                        (selector, file) => {
+                          const destFile = file || currentTask.targetFile;
+                          if (onSelectFile && destFile) {
+                            onSelectFile(destFile);
+                          }
+                          window.dispatchEvent(
+                            new CustomEvent('vohsa:navigate-to-text', {
+                              detail: { text: selector, targetFile: destFile },
+                            })
+                          );
+                        }
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* AST Syntax Error if entire file failed parser */}
             {lastValidationResult && lastValidationResult.taskId === currentTask.id && !lastValidationResult.astSummary.syntaxValid && (

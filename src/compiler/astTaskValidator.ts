@@ -895,6 +895,7 @@ export function parseTasksFromVfs(files: VirtualFile[]): {
         : 'Custom') as LearningTask['category'];
       const targetFile = String(item.targetFile || 'index.html');
       const description = String(item.description || 'Выполните задание');
+      const hint = typeof item.hint === 'string' ? item.hint : undefined;
       const templateCode = typeof item.templateCode === 'string' ? item.templateCode : undefined;
       const slots = item.slots && typeof item.slots === 'object' ? item.slots : undefined;
 
@@ -938,6 +939,7 @@ export function parseTasksFromVfs(files: VirtualFile[]): {
         category,
         targetFile,
         description,
+        hint,
         templateCode,
         slots,
         criteria,
