@@ -1,8 +1,9 @@
-import * as acorn from 'acorn';
+﻿import * as acorn from 'acorn';
 import * as csstree from 'css-tree';
 import * as parse5 from 'parse5';
 import type { VirtualFile } from './templateEngine';
 import type { LearningTask, TaskCriterion, TaskValidationResult } from '../types/learningTasks';
+import { parseApacheConfig, gradeApacheRoutingTask } from './apacheVirtualRouter';
 
 /**
  * Валидатор кода по заданию студента с использованием 3 AST-модулей (parse5, css-tree, acorn)
@@ -730,6 +731,78 @@ export function compileCriterionCheck(
       };
     }
 
+    // 6.5. Apache Virtual Routing / Test Cases
+    if (criterion.virtualRequests && criterion.virtualRequests.length > 0) {
+      const grading = gradeApacheRoutingTask(code, criterion.virtualRequests);
+      if (grading.passed) {
+        return {
+          passed: true,
+          message: criterion.message || `Все тестовые запросы (${grading.totalTests}/${grading.totalTests}) успешно разрешены`,
+        };
+      }
+      const firstFail = grading.details.find((d) => !d.passed);
+      const failMsg = firstFail
+        ? `Запрос ${firstFail.testCase.url}: ${firstFail.message}`
+        : 'Тестовые запросы не прошли проверку';
+      return {
+        passed: false,
+        message: criterion.message ? `${criterion.message} (${failMsg})` : failMsg,
+      };
+    }
+
+    // 6.6. Apache Directive / Pattern / Flags
+    if (criterion.apacheDirective !== undefined) {
+      const parsed = parseApacheConfig(code);
+      const dirKey = criterion.apacheDirective.toLowerCase();
+      const existing = parsed.directives[dirKey];
+      if (!existing || existing.length === 0) {
+        return {
+          passed: false,
+          message: criterion.message || `Директива "${criterion.apacheDirective}" не найдена в конфигурации`,
+        };
+      }
+
+      if (dirKey === 'rewriterule') {
+        const matchingRoute = parsed.routes.find((r) => {
+          let patOk = true;
+          let subOk = true;
+          let flagsOk = true;
+
+          if (criterion.apachePattern) {
+            patOk = r.pattern === criterion.apachePattern || r.pattern.includes(criterion.apachePattern);
+          }
+          if (criterion.apacheSubstitution) {
+            subOk = r.substitution === criterion.apacheSubstitution || r.substitution.includes(criterion.apacheSubstitution);
+          }
+          if (criterion.apacheFlags && criterion.apacheFlags.length > 0) {
+            const upperFlags = r.flags.map((f) => f.toUpperCase());
+            flagsOk = criterion.apacheFlags.every((reqF) => upperFlags.includes(reqF.toUpperCase()));
+          }
+          return patOk && subOk && flagsOk;
+        });
+
+        if (!matchingRoute) {
+          return {
+            passed: false,
+            message:
+              criterion.message ||
+              `Правило RewriteRule не найдено с требуемыми параметрами (паттерн: ${criterion.apachePattern || '*'}, флаги: ${criterion.apacheFlags?.join(',') || '*'})`,
+          };
+        }
+
+        return {
+          passed: true,
+          message: criterion.message || `Правило RewriteRule корректно настроено`,
+          line: matchingRoute.lineNumber,
+        };
+      }
+
+      return {
+        passed: true,
+        message: criterion.message || `Директива "${criterion.apacheDirective}" найдена`,
+      };
+    }
+
     // 7. Пользовательское выражение JS
     if (criterion.expression !== undefined) {
       try {
@@ -817,7 +890,7 @@ export function parseTasksFromVfs(files: VirtualFile[]): {
     const tasks: LearningTask[] = rawList.map((item, idx) => {
       const id = String(item.id || `vfs-task-${idx + 1}`);
       const title = String(item.title || `Урок ${idx + 1}`);
-      const category = (['HTML', 'CSS', 'JavaScript', 'Custom'].includes(item.category)
+      const category = (['HTML', 'CSS', 'JavaScript', 'Apache', 'DevOps', 'Custom'].includes(item.category)
         ? item.category
         : 'Custom') as LearningTask['category'];
       const targetFile = String(item.targetFile || 'index.html');
@@ -842,6 +915,11 @@ export function parseTasksFromVfs(files: VirtualFile[]): {
         cssValues: Array.isArray(c.cssValues) ? c.cssValues : undefined,
         cssValueRegex: typeof c.cssValueRegex === "string" ? c.cssValueRegex : undefined,
         variableDeclared: c.variableDeclared,
+        apacheDirective: c.apacheDirective,
+        apachePattern: c.apachePattern,
+        apacheSubstitution: c.apacheSubstitution,
+        apacheFlags: Array.isArray(c.apacheFlags) ? c.apacheFlags : undefined,
+        virtualRequests: Array.isArray(c.virtualRequests) ? c.virtualRequests : undefined,
         expression: c.expression,
         message: c.message,
       }));
@@ -996,8 +1074,18 @@ export function validateLearningTask(task: LearningTask, files: VirtualFile[]): 
     syntaxError = parsed.error;
     syntaxLine = parsed.line;
     syntaxColumn = parsed.column;
+  } else if (
+    task.targetFile.endsWith('.conf') ||
+    task.targetFile.endsWith('.htaccess') ||
+    task.targetFile === '.htaccess' ||
+    task.targetFile === 'httpd.conf' ||
+    task.category === 'Apache'
+  ) {
+    parserName = 'Apache mod_rewrite AST';
+    const parsed = parseApacheConfig(content);
+    syntaxValid = parsed.errors.length === 0;
+    syntaxError = parsed.errors.length > 0 ? parsed.errors.join('; ') : undefined;
   }
-
   // Запуск критериев проверки
   const criteriaResults = task.criteria.map((criterion) => {
     try {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+﻿import { useEffect, useRef, useState } from 'preact/hooks';
 import { monaco, getJsxSyntaxHighlighter } from '../monacoSetup';
 import { Plus, X, ChevronRight, Sparkles } from 'lucide-preact';
 import { getFileIcon } from './Explorer';
@@ -21,6 +21,10 @@ interface EditorPaneProps {
 }
 
 function getFileLanguage(fileName: string): string {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith('.conf') || lower === '.htaccess' || lower.endsWith('.htaccess') || lower === 'httpd.conf' || lower === 'apache.conf') {
+    return 'apache';
+  }
   if (fileName.endsWith('.vue')) return 'vue';
   if (fileName.endsWith('.jsx')) return 'javascript';
   if (fileName.endsWith('.tsx')) return 'typescript';

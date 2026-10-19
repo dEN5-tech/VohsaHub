@@ -1,4 +1,4 @@
-import * as monaco from 'monaco-editor';
+﻿import * as monaco from 'monaco-editor';
 import { html, css, json, typescript } from 'monaco-editor';
 import { emmetHTML, emmetCSS, emmetJSX } from 'emmet-monaco-es';
 import { MonacoJsxSyntaxHighlight, getWorker } from 'monaco-jsx-syntax-highlight';
@@ -120,6 +120,293 @@ try {
   console.warn('Vue language registration error:', vueErr);
 }
 
+
+// =============================================================================
+// Apache Configuration (.htaccess, httpd.conf) Language Plugin for Monaco
+// =============================================================================
+
+export const apacheLanguageConfiguration: monaco.languages.LanguageConfiguration = {
+  comments: {
+    lineComment: '#',
+  },
+  brackets: [
+    ['<', '>'],
+    ['[', ']'],
+    ['(', ')'],
+    ['{', '}'],
+  ],
+  autoClosingPairs: [
+    { open: '{', close: '}' },
+    { open: '[', close: ']' },
+    { open: '(', close: ')' },
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '<', close: '>' },
+  ],
+  surroundingPairs: [
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '{', close: '}' },
+    { open: '[', close: ']' },
+    { open: '(', close: ')' },
+    { open: '<', close: '>' },
+  ],
+  folding: {
+    markers: {
+      start: new RegExp('^\\s*<[a-zA-Z0-9_]+'),
+      end: new RegExp('^\\s*</[a-zA-Z0-9_]+>'),
+    },
+  },
+};
+
+export const apacheMonarchTokensProvider: monaco.languages.IMonarchLanguage = {
+  defaultToken: '',
+  tokenPostfix: '.apache',
+  ignoreCase: true,
+
+  keywords: [
+    'RewriteEngine', 'RewriteRule', 'RewriteCond', 'RewriteBase', 'RewriteMap', 'RewriteOptions',
+    'Options', 'AllowOverride', 'Require', 'Order', 'Allow', 'Deny', 'Satisfy',
+    'ServerName', 'ServerAlias', 'ServerAdmin', 'ServerRoot', 'DocumentRoot',
+    'DirectoryIndex', 'ErrorDocument', 'CustomLog', 'ErrorLog', 'LogLevel',
+    'Header', 'RequestHeader', 'SetEnv', 'SetEnvIf', 'PassEnv', 'UnsetEnv',
+    'AddType', 'AddHandler', 'AddOutputFilter', 'AddEncoding', 'AddCharset',
+    'ExpiresActive', 'ExpiresDefault', 'ExpiresByType',
+    'IndexOptions', 'IndexIgnore', 'ReadmeName', 'HeaderName',
+    'LimitRequestBody', 'LimitRequestFields', 'LimitRequestFieldSize',
+    'KeepAlive', 'MaxKeepAliveRequests', 'KeepAliveTimeout', 'Timeout',
+    'SSLEngine', 'SSLCertificateFile', 'SSLCertificateKeyFile', 'SSLCertificateChainFile',
+    'SSLCACertificateFile', 'SSLProtocol', 'SSLCipherSuite',
+    'AccessFileName', 'FileETag', 'DefaultType', 'HostnameLookups'
+  ],
+
+  tags: [
+    'VirtualHost', 'Directory', 'DirectoryMatch', 'Files', 'FilesMatch',
+    'Location', 'LocationMatch', 'IfModule', 'IfDefine', 'IfVersion',
+    'Proxy', 'ProxyMatch', 'Limit', 'LimitExcept', 'AuthnProviderAlias'
+  ],
+
+  variables: [
+    'HTTP_USER_AGENT', 'HTTP_REFERER', 'HTTP_COOKIE', 'HTTP_FORWARDED', 'HTTP_HOST',
+    'HTTP_PROXY_CONNECTION', 'HTTP_ACCEPT', 'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_PORT',
+    'REMOTE_USER', 'REMOTE_IDENT', 'REQUEST_METHOD', 'SCRIPT_FILENAME', 'PATH_INFO',
+    'QUERY_STRING', 'AUTH_TYPE', 'DOCUMENT_ROOT', 'SERVER_ADMIN', 'SERVER_NAME',
+    'SERVER_ADDR', 'SERVER_PORT', 'SERVER_PROTOCOL', 'SERVER_SOFTWARE', 'TIME_YEAR',
+    'TIME_MON', 'TIME_DAY', 'TIME_HOUR', 'TIME_MIN', 'TIME_SEC', 'TIME_WDAY',
+    'TIME', 'API_VERSION', 'THE_REQUEST', 'REQUEST_URI', 'REQUEST_FILENAME',
+    'IS_SUBREQ', 'HTTPS'
+  ],
+
+  flags: [
+    'L', 'last', 'QSA', 'qsappend', 'NC', 'nocase', 'R', 'redirect',
+    'F', 'forbidden', 'G', 'gone', 'PT', 'passthrough', 'B', 'BNE', 'BNP',
+    'C', 'chain', 'CO', 'cookie', 'DPI', 'discardpath', 'E', 'env',
+    'END', 'H', 'handler', 'N', 'next', 'NE', 'noescape', 'NS', 'nosubreq',
+    'P', 'proxy', 'S', 'skip', 'T', 'type'
+  ],
+
+  tokenizer: {
+    root: [
+      // Comments
+      [/#.*$/, 'comment'],
+
+      // Section tags: <VirtualHost *:80>, </VirtualHost>
+      [/(<\/?)(\w+)([^>]*)(>)/, [
+        { token: 'delimiter' },
+        { token: 'tag' },
+        { token: 'attribute.name' },
+        { token: 'delimiter' }
+      ]],
+
+      // Apache variables %{VAR}
+      [/%\{[a-zA-Z0-9_]+\}/, 'variable'],
+
+      // Backreferences $1, \1, %1
+      [/[$%\\][0-9]/, 'number'],
+
+      // Flags in brackets [L,QSA,NC,R=301]
+      [/\[/, { token: 'delimiter.bracket', next: '@flags' }],
+
+      // Directives
+      [/^\s*([a-zA-Z0-9_]+)/, {
+        cases: {
+          '@keywords': 'keyword',
+          '@default': 'identifier'
+        }
+      }],
+
+      // Strings
+      [/"([^"\\]|\\.)*"/, 'string'],
+      [/'([^'\\]|\\.)*'/, 'string'],
+
+      // IP addresses, numbers, ports
+      [/\b\d+(\.\d+){3}(:\d+)?\b/, 'number'],
+      [/\b\d+\b/, 'number'],
+
+      // Delimiters
+      [/[{}()]/, 'delimiter.bracket'],
+      [/[,:]/, 'delimiter'],
+
+      // Regular identifiers
+      [/[a-zA-Z_]\w*/, {
+        cases: {
+          '@keywords': 'keyword',
+          '@variables': 'variable',
+          '@flags': 'constant',
+          '@default': 'identifier'
+        }
+      }],
+
+      // Whitespace
+      [/\s+/, 'white'],
+    ],
+
+    flags: [
+      [/\]/, { token: 'delimiter.bracket', next: '@pop' }],
+      [/[a-zA-Z0-9_-]+(=[a-zA-Z0-9_.:/-]+)?/, {
+        cases: {
+          '@flags': 'constant',
+          '@default': 'constant'
+        }
+      }],
+      [/,/, 'delimiter'],
+      [/\s+/, 'white'],
+    ]
+  }
+};
+
+// Register Apache language in Monaco
+try {
+  monaco.languages.register({
+    id: 'apache',
+    extensions: ['.conf', '.htaccess'],
+    filenames: ['.htaccess', 'httpd.conf', 'apache.conf', 'apache2.conf', '000-default.conf'],
+    aliases: ['Apache', 'apache', 'htaccess', 'httpd']
+  });
+  monaco.languages.setLanguageConfiguration('apache', apacheLanguageConfiguration);
+  monaco.languages.setMonarchTokensProvider('apache', apacheMonarchTokensProvider);
+
+  monaco.languages.registerCompletionItemProvider('apache', {
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position);
+      const range: monaco.IRange = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn,
+      };
+
+      const suggestions: monaco.languages.CompletionItem[] = [
+        {
+          label: 'RewriteEngine On',
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: 'RewriteEngine On\n',
+          documentation: 'Включает механизм маршрутизации URL mod_rewrite',
+          range,
+        },
+        {
+          label: 'RewriteBase',
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: 'RewriteBase ${1:/}\n',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Задает базовый префикс URL для локальных правил mod_rewrite',
+          range,
+        },
+        {
+          label: 'RewriteRule (User Profile Routing)',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: 'RewriteRule ^user/([0-9]+)$ profile.php?id=$1 [L,QSA]\n',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Маршрутизация ЧПУ профиля: /user/42 -> profile.php?id=42 [L,QSA]',
+          range,
+        },
+        {
+          label: 'RewriteRule (Slug / Category)',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: 'RewriteRule ^${1:products}/([a-zA-Z0-9_-]+)/?$ ${2:item.php}?slug=$1 [L,QSA]\n',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Преобразование ЧПУ слагов в параметры запроса',
+          range,
+        },
+        {
+          label: 'RewriteCond File / Directory Check',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: 'RewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule ^(.*)$ index.php [L,QSA]\n',
+          documentation: 'Front-Controller роутинг: если файл или папка не существует, направить в index.php',
+          range,
+        },
+        {
+          label: '<VirtualHost *:80>',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: '<VirtualHost *:80>\n\tServerName ${1:example.local}\n\tDocumentRoot "${2:/var/www/html}"\n\t<Directory "${2:/var/www/html}">\n\t\tAllowOverride All\n\t\tRequire all granted\n\t</Directory>\n</VirtualHost>\n',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Блок виртуального хоста Apache',
+          range,
+        },
+        {
+          label: '<IfModule mod_rewrite.c>',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: '<IfModule mod_rewrite.c>\n\tRewriteEngine On\n\t${1}\n</IfModule>\n',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Безопасная проверка наличия модуля mod_rewrite',
+          range,
+        },
+        {
+          label: '[L,QSA]',
+          kind: monaco.languages.CompletionItemKind.Value,
+          insertText: '[L,QSA]',
+          documentation: 'Флаги: L (Last - последнее правило), QSA (Query String Append - объединение параметров запроса)',
+          range,
+        },
+        {
+          label: '[NC,L]',
+          kind: monaco.languages.CompletionItemKind.Value,
+          insertText: '[NC,L]',
+          documentation: 'Флаги: NC (No Case - нечувствительность к регистру), L (Last)',
+          range,
+        },
+        {
+          label: '[R=301,L]',
+          kind: monaco.languages.CompletionItemKind.Value,
+          insertText: '[R=301,L]',
+          documentation: 'Флаги: R=301 (Permanent Redirect), L (Last)',
+          range,
+        },
+      ];
+
+      return { suggestions };
+    },
+  });
+
+  monaco.languages.registerHoverProvider('apache', {
+    provideHover(model, position) {
+      const word = model.getWordAtPosition(position);
+      if (!word) return null;
+      const w = word.word.toLowerCase();
+
+      const docs: Record<string, string> = {
+        rewriteengine: '**RewriteEngine** *(on | off)*\n\nВключает или выключает механизм маршрутизации URL mod_rewrite в Apache.',
+        rewriterule: '**RewriteRule** *Pattern Substitution [Flags]*\n\nОпределяет правило подстановки URL на основе регулярного выражения.\n- **Pattern**: Regex для проверки входящего запроса.\n- **Substitution**: Целевой путь в файловой системе или URL.\n- **Flags**: Модификаторы поведения (например, `[L,QSA]`).',
+        rewritecond: '**RewriteCond** *TestString CondPattern [Flags]*\n\nЗадает условие для следующего `RewriteRule`. Поддерживает переменные `%{REQUEST_FILENAME}`, `%{HTTP_HOST}` и системные тесты `!-f`, `!-d`.',
+        rewritebase: '**RewriteBase** *URL-path*\n\nБазовый префикс для относительных подстановок в контексте `.htaccess`.',
+        virtualhost: '**<VirtualHost [IP|*]:порт>**\n\nКонтейнер изолированной конфигурации сайта/домена.',
+        documentroot: '**DocumentRoot** *directory-path*\n\nКорневой каталог в файловой системе для отдачи документов сайта.',
+        servername: '**ServerName** *hostname[:port]*\n\nОсновное доменное имя виртуального хоста.',
+        allowoverride: '**AllowOverride** *(All | None | Directives...)*\n\nРазрешает или запрещает переопределение настроек через локальные файлы `.htaccess`.',
+        options: '**Options** *[+|-]Option...*\n\nВключает дополнительные функции каталога (`Indexes`, `FollowSymLinks`).',
+      };
+
+      if (docs[w]) {
+        return {
+          contents: [{ value: docs[w] }],
+        };
+      }
+      return null;
+    },
+  });
+} catch (apacheErr) {
+  console.warn('Apache language registration error:', apacheErr);
+}
 // Singleton for JSX / TSX syntax highlighter
 let jsxSyntaxHighlighterInstance: MonacoJsxSyntaxHighlight | null = null;
 

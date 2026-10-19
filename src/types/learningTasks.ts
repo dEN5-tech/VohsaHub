@@ -1,4 +1,4 @@
-import type { VirtualFile } from '../compiler/templateEngine';
+﻿import type { VirtualFile } from '../compiler/templateEngine';
 
 export type SlotType = 'select' | 'chips' | 'input';
 
@@ -36,6 +36,19 @@ export interface DeclarativeCriterion {
   cssValueRegex?: string;
   // JS проверки (acorn)
   variableDeclared?: string;
+  // Apache / Virtual Routing проверки (mod_rewrite)
+  apacheDirective?: string;
+  apachePattern?: string;
+  apacheSubstitution?: string;
+  apacheFlags?: string[];
+  virtualRequests?: Array<{
+    method?: string;
+    url: string;
+    expectedPath?: string;
+    expectedStatus?: number;
+    expectedRedirect?: string;
+    description?: string;
+  }>;
   // Вычисляемое выражение
   expression?: string;
   check?: (fileContent: string, files: VirtualFile[]) => {
@@ -51,7 +64,7 @@ export type TaskCriterion = DeclarativeCriterion;
 export interface LearningTask {
   id: string;
   title: string;
-  category: 'HTML' | 'CSS' | 'JavaScript' | 'Custom';
+  category: 'HTML' | 'CSS' | 'JavaScript' | 'Apache' | 'DevOps' | 'Custom';
   description: string; // Цель урока
   targetFile: string; // Целевой файл
   hint?: string;

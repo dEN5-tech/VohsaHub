@@ -1,10 +1,11 @@
-import {
+﻿import {
   FileCode,
   FileJson,
   Palette,
   Cpu,
   FileText,
   GraduationCap,
+  Server,
 } from 'lucide-preact';
 
 /**
@@ -20,6 +21,15 @@ export function getFileIcon(fileName: string, size = 14) {
     lower.endsWith('.sololearn.json')
   ) {
     return <GraduationCap size={size} color="var(--chakra-colors-teal-fg, #14b8a6)" />;
+  }
+  if (
+    lower.endsWith('.conf') ||
+    lower === '.htaccess' ||
+    lower.endsWith('.htaccess') ||
+    lower === 'httpd.conf' ||
+    lower === 'apache.conf'
+  ) {
+    return <Server size={size} color="#f43f5e" />;
   }
   if (fileName.endsWith('.vue')) {
     return (
