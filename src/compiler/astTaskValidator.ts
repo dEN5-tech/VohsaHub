@@ -497,7 +497,9 @@ export function validateCssPropertyValue(
       const cleanActual = normActual.replace(/\s+/g, " ").trim();
       if (cleanOpt === cleanActual) return true;
       const escapedOpt = cleanOpt.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-      const rx = new RegExp("(^|[\\s,(])" + escapedOpt + "([\\s,)>]|$)", "i");
+      const isUnit = /^(px|rem|em|%|fr|vw|vh|ms|s|deg)$/i.test(cleanOpt);
+      const prefix = isUnit ? "(^|[\\s,(]|\\d)" : "(^|[\\s,(])";
+      const rx = new RegExp(prefix + escapedOpt + "([\\s,)>]|$)", "i");
       return rx.test(cleanActual);
     });
 
