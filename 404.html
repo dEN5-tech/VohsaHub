@@ -5,9 +5,12 @@
   <title>VohsaHub Redirect</title>
   <script>
     // GitHub Pages SPA redirect
-    // If user opened https://den5-tech.github.io/VohsaHub/v2=... or /p=...
-    // redirect to https://den5-tech.github.io/VohsaHub/#v2=... or /#p=...
     (function() {
+      // Failsafe: if running inside an iframe (e.g. sandbox preview), NEVER redirect to root application!
+      if (window.self !== window.top) {
+        document.write('<div style="font-family:sans-serif;padding:24px;color:#94a3b8;background:#0f172a;text-align:center;"><h3>404: Страница не найдена</h3><p>Ссылка внутри песочницы указывает на несуществующий адрес.</p></div>');
+        return;
+      }
       var path = window.location.pathname;
       var repoPrefix = '/VohsaHub';
       if (path.startsWith(repoPrefix)) {
