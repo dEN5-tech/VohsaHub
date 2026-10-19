@@ -25,6 +25,9 @@ function getFileLanguage(fileName: string): string {
   if (lower.endsWith('.conf') || lower === '.htaccess' || lower.endsWith('.htaccess') || lower === 'httpd.conf' || lower === 'apache.conf') {
     return 'apache';
   }
+  if (lower.endsWith('.php') || lower.endsWith('.phtml')) {
+    return 'php';
+  }
   if (fileName.endsWith('.vue')) return 'vue';
   if (fileName.endsWith('.jsx')) return 'javascript';
   if (fileName.endsWith('.tsx')) return 'typescript';
@@ -89,13 +92,14 @@ export function EditorPane({
 
     // Create models for all initial files with safe vfs:/// URI
     files.forEach((file) => {
-      if (!modelsMapRef.current.has(file.name)) {
-        const lang = getFileLanguage(file.name);
-        const uri = monaco.Uri.parse(`vfs:///${file.name}`);
-        const existingModel = monaco.editor.getModel(uri);
-        const model = existingModel || monaco.editor.createModel(file.content, lang, uri);
-        modelsMapRef.current.set(file.name, model);
+      const lang = getFileLanguage(file.name);
+      const uri = monaco.Uri.parse('vfs:///' + file.name);
+      const existingModel = monaco.editor.getModel(uri);
+      const model = existingModel || monaco.editor.createModel(file.content, lang, uri);
+      if (model.getLanguageId() !== lang) {
+        monaco.editor.setModelLanguage(model, lang);
       }
+      modelsMapRef.current.set(file.name, model);
     });
 
     const activeModel = modelsMapRef.current.get(activeFileName) || null;
@@ -158,6 +162,8 @@ export function EditorPane({
     });
 
     editorInstanceRef.current = editor;
+    (window as any).__monacoEditor = editor;
+    (window as any).__monaco = monaco;
 
     // JSX / TSX syntax highlighter instance
     let jsxHighlighterDisposable: { highlighter: (code?: string) => void; dispose: () => void } | null = null;
@@ -672,15 +678,21 @@ export function EditorPane({
     isInternalChangeRef.current = false;
 
     files.forEach((file) => {
+      const lang = getFileLanguage(file.name);
       if (!modelsMapRef.current.has(file.name)) {
-        const lang = getFileLanguage(file.name);
-        const uri = monaco.Uri.parse(`vfs:///${file.name}`);
+        const uri = monaco.Uri.parse('vfs:///' + file.name);
         const existingModel = monaco.editor.getModel(uri);
         const model = existingModel || monaco.editor.createModel(file.content, lang, uri);
+        if (model.getLanguageId() !== lang) {
+          monaco.editor.setModelLanguage(model, lang);
+        }
         modelsMapRef.current.set(file.name, model);
-      } else if (!isInternal) {
+      } else {
         const model = modelsMapRef.current.get(file.name)!;
-        if (model.getValue() !== file.content) {
+        if (model.getLanguageId() !== lang) {
+          monaco.editor.setModelLanguage(model, lang);
+        }
+        if (!isInternal && model.getValue() !== file.content) {
           model.setValue(file.content);
         }
       }

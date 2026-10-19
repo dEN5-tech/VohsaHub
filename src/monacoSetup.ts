@@ -407,6 +407,239 @@ try {
 } catch (apacheErr) {
   console.warn('Apache language registration error:', apacheErr);
 }
+
+
+// =============================================================================
+// PHP (.php, .phtml) Language Configuration, Monarch Grammar & Snippets
+// =============================================================================
+
+export const phpLanguageConfiguration: monaco.languages.LanguageConfiguration = {
+  comments: {
+    lineComment: '//',
+    blockComment: ['/*', '*/'],
+  },
+  brackets: [
+    ['<!--', '-->'],
+    ['<', '>'],
+    ['{', '}'],
+    ['(', ')'],
+    ['[', ']'],
+  ],
+  autoClosingPairs: [
+    { open: '{', close: '}' },
+    { open: '[', close: ']' },
+    { open: '(', close: ')' },
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '`', close: '`' },
+    { open: '<', close: '>' },
+    { open: '<!--', close: '-->', notIn: ['comment', 'string'] },
+  ],
+  surroundingPairs: [
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '{', close: '}' },
+    { open: '[', close: ']' },
+    { open: '(', close: ')' },
+    { open: '<', close: '>' },
+  ],
+  folding: {
+    markers: {
+      start: new RegExp('^\\s*(#|//)\\s*#region\\b'),
+      end: new RegExp('^\\s*(#|//)\\s*#endregion\\b'),
+    },
+  },
+};
+
+export const phpMonarchTokensProvider: monaco.languages.IMonarchLanguage = {
+  defaultToken: '',
+  tokenPostfix: '.php',
+
+  keywords: [
+    'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch', 'class',
+    'clone', 'const', 'continue', 'declare', 'default', 'die', 'do', 'echo', 'else',
+    'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch',
+    'endwhile', 'eval', 'exit', 'extends', 'final', 'finally', 'fn', 'for', 'foreach',
+    'function', 'global', 'goto', 'if', 'implements', 'include', 'include_once',
+    'instanceof', 'insteadof', 'interface', 'isset', 'list', 'match', 'namespace',
+    'new', 'or', 'print', 'private', 'protected', 'public', 'readonly', 'require',
+    'require_once', 'return', 'static', 'switch', 'throw', 'trait', 'try', 'unset',
+    'use', 'var', 'while', 'xor', 'yield', 'true', 'false', 'null'
+  ],
+
+  tokenizer: {
+    root: [
+      // Doctype
+      [/<!DOCTYPE\b[^>]*>/i, 'metatag.html'],
+
+      // PHP Open Tags
+      [/<\?php\b/, { token: 'metatag.php', next: '@phpBlock' }],
+      [/<\?=\s*/, { token: 'metatag.php', next: '@phpBlock' }],
+      [/<\?/, { token: 'metatag.php', next: '@phpBlock' }],
+
+      // HTML comments
+      [/<!--/, 'comment.html', '@htmlComment'],
+
+      // HTML tags
+      [/<\/?[a-zA-Z0-9_\-]+/, 'tag', '@htmlTagContent'],
+
+      // Raw text outside PHP
+      [/[^<]+/, ''],
+    ],
+
+    htmlTagContent: [
+      [/\/>/, 'delimiter.html', '@pop'],
+      [/>/, 'delimiter.html', '@pop'],
+      [/<\?php\b/, { token: 'metatag.php', next: '@phpBlock' }],
+      [/<\?=\s*/, { token: 'metatag.php', next: '@phpBlock' }],
+      [/[a-zA-Z0-9_\-]+/, 'attribute.name'],
+      [/=\s*"([^"]*)"/, 'attribute.value'],
+      [/=\s*'([^']*)'/, 'attribute.value'],
+      [/=\s*([^\s>]+)/, 'attribute.value'],
+      [/\s+/, 'white'],
+    ],
+
+    htmlComment: [
+      [/-->/, 'comment.html', '@pop'],
+      [/[^-]+/, 'comment.html'],
+      [/[-]/, 'comment.html'],
+    ],
+
+    phpBlock: [
+      // PHP Close Tag
+      [/\?>/, { token: 'metatag.php', next: '@pop' }],
+
+      // Whitespace
+      [/\s+/, 'white'],
+
+      // Line comments
+      [/(#|\/\/).*$/, 'comment'],
+
+      // Block comments
+      [/\/\*/, 'comment', '@phpComment'],
+
+      // Superglobals
+      [/\$_(GET|POST|COOKIE|SERVER|ENV|REQUEST|SESSION|FILES)\b/, 'variable.predefined.php'],
+      [/\$GLOBALS\b/, 'variable.predefined.php'],
+
+      // Variables ($varName)
+      [/\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/, 'variable.php'],
+
+      // Strings
+      [/"([^"\\]|\\.)*"/, 'string'],
+      [/'([^'\\]|\\.)*'/, 'string'],
+
+      // Numbers
+      [/\b\d+(\.\d+)?\b/, 'number'],
+
+      // Function calls
+      [/[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*(?=\s*\()/, {
+        cases: {
+          '@keywords': 'keyword.php',
+          '@default': 'function'
+        }
+      }],
+
+      // Keywords & identifiers
+      [/[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/, {
+        cases: {
+          '@keywords': 'keyword.php',
+          '@default': 'identifier'
+        }
+      }],
+
+      // Delimiters & operators
+      [/[{}()\[\]]/, 'delimiter.bracket'],
+      [/[,;:.]/, 'delimiter'],
+      [/[+\-*\/%=&|!<>?~^]+/, 'operator'],
+    ],
+
+    phpComment: [
+      [/\*\//, 'comment', '@pop'],
+      [/[^*]+/, 'comment'],
+      [/[\*]/, 'comment'],
+    ],
+  },
+};
+
+// Register PHP Language
+try {
+  monaco.languages.register({
+    id: 'php',
+    extensions: ['.php', '.phtml', '.php4', '.php5', '.phps'],
+    aliases: ['PHP', 'php'],
+    mimetypes: ['application/x-php'],
+  });
+  monaco.languages.setLanguageConfiguration('php', phpLanguageConfiguration);
+  monaco.languages.setMonarchTokensProvider('php', phpMonarchTokensProvider);
+
+  monaco.languages.registerCompletionItemProvider('php', {
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position);
+      const range: monaco.IRange = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn,
+      };
+
+      const suggestions: monaco.languages.CompletionItem[] = [
+        {
+          label: '<?php ... ?>',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: '<?php\n\t${1}\n?>',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Блок PHP кода',
+          range,
+        },
+        {
+          label: '<?= ... ?>',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: '<?= htmlspecialchars(${1:$_GET[\'id\']} ?? \'\') ?>',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Короткий вывод с безопасным экранированием htmlspecialchars',
+          range,
+        },
+        {
+          label: 'htmlspecialchars',
+          kind: monaco.languages.CompletionItemKind.Function,
+          insertText: 'htmlspecialchars(${1:$data}, ENT_QUOTES, \'UTF-8\')',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Преобразует специальные символы в HTML-сущности',
+          range,
+        },
+        {
+          label: '$_GET',
+          kind: monaco.languages.CompletionItemKind.Variable,
+          insertText: '$_GET[\'${1:key}\']',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Ассоциативный массив параметров GET-запроса',
+          range,
+        },
+        {
+          label: '$_POST',
+          kind: monaco.languages.CompletionItemKind.Variable,
+          insertText: '$_POST[\'${1:key}\']',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Ассоциативный массив параметров POST-запроса',
+          range,
+        },
+        {
+          label: 'echo',
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: 'echo ${1};',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'Вывод строки или выражения',
+          range,
+        },
+      ];
+
+      return { suggestions };
+    },
+  });
+} catch (phpErr) {
+  console.warn('PHP language registration error:', phpErr);
+}
 // Singleton for JSX / TSX syntax highlighter
 let jsxSyntaxHighlighterInstance: MonacoJsxSyntaxHighlight | null = null;
 
@@ -566,7 +799,7 @@ try {
 
 // Настройка Emmet Настройка ??? Настройка Настройка HTML / CSS / JSX Настройка
 try {
-  emmetHTML(monaco, ['html', 'handlebars', 'razor', 'vue']);
+  emmetHTML(monaco, ['html', 'handlebars', 'razor', 'vue', 'php']);
   emmetCSS(monaco, ['css', 'scss', 'less']);
   emmetJSX(monaco, ['javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'jsx', 'tsx']);
 } catch (emmetErr) {
@@ -590,6 +823,8 @@ monaco.editor.defineTheme('chakra-dark', {
     { token: 'tag.class', foreground: '5EEAD4' },
     { token: 'attribute.name', foreground: '2DD4BF' },
     { token: 'attribute.value', foreground: 'FDE047' },
+    { token: 'metatag.html', foreground: '71717A', fontStyle: 'italic' },
+    { token: 'operator', foreground: 'F43F5E' },
     { token: 'delimiter', foreground: 'A1A1AA' },
     { token: 'delimiter.html', foreground: '71717A' },
     { token: 'type', foreground: '38BDF8', fontStyle: 'italic' },
@@ -606,6 +841,10 @@ monaco.editor.defineTheme('chakra-dark', {
     { token: 'string.css', foreground: 'FDE047' },
     { token: 'unit.css', foreground: 'C084FC' },
     { token: 'number.css', foreground: 'C084FC' },
+    { token: 'metatag.php', foreground: 'F43F5E', fontStyle: 'bold' },
+    { token: 'variable.predefined.php', foreground: 'FB923C', fontStyle: 'bold' },
+    { token: 'variable.php', foreground: 'FB923C' },
+    { token: 'keyword.php', foreground: 'FB7185', fontStyle: 'bold' },
   ],
   colors: {
     // Surface & background matching Chakra UI #09090b
@@ -677,4 +916,5 @@ monaco.editor.defineTheme('monokai', {
   },
 });
 
+(window as any).monaco = monaco;
 export { monaco };

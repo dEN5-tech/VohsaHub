@@ -31,6 +31,9 @@ export function getFileIcon(fileName: string, size = 14) {
   ) {
     return <Server size={size} color="#f43f5e" />;
   }
+  if (lower.endsWith('.php') || lower.endsWith('.phtml')) {
+    return <FileCode size={size} color="#8892be" />;
+  }
   if (fileName.endsWith('.vue')) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
