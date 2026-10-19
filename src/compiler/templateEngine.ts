@@ -153,6 +153,87 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
   window.addEventListener('unhandledrejection', function(event) {
     send('error', ['[Promise Rejection] ' + (event.reason ? (event.reason.message || event.reason) : 'Unknown')]);
   });
+
+  // 4. Перехват кликов по якорным ссылкам (Anchor Hashtag Linking)
+  document.addEventListener('click', function(e) {
+    var anchor = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!anchor) return;
+
+    var href = anchor.getAttribute('href');
+    if (!href) return;
+
+    if (href.startsWith('javascript:')) return;
+    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+    var hashIndex = href.indexOf('#');
+    if (hashIndex !== -1) {
+      var targetPath = href.substring(0, hashIndex).replace(/^(\.\/|\/)+/, '');
+      var hash = href.substring(hashIndex + 1);
+
+      var currentPath = window.location.pathname.split('/').pop() || 'index.html';
+      var isCurrentPage = !targetPath || targetPath === '' || targetPath === 'index.html' || targetPath.toLowerCase() === currentPath.toLowerCase();
+
+      if (isCurrentPage) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!hash || hash === '') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          try {
+            history.pushState(null, '', '#');
+          } catch (err) {}
+          return;
+        }
+
+        var targetEl = document.getElementById(hash);
+        if (!targetEl) {
+          try {
+            targetEl = document.querySelector('[name="' + CSS.escape(hash) + '"]') ||
+                       document.querySelector('#' + CSS.escape(hash));
+          } catch (selErr) {
+            targetEl = null;
+          }
+        }
+
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          try {
+            history.pushState(null, '', '#' + hash);
+          } catch (err) {}
+
+          var prevOutline = targetEl.style.outline;
+          var prevTransition = targetEl.style.transition;
+          targetEl.style.transition = 'outline 0.25s ease-in-out';
+          targetEl.style.outline = '2px solid rgba(56, 189, 248, 0.9)';
+          setTimeout(function() {
+            targetEl.style.outline = prevOutline;
+            targetEl.style.transition = prevTransition;
+          }, 1400);
+        } else {
+          console.warn('[VohsaHub] Элемент с якорем #' + hash + ' не найден на странице.');
+        }
+      }
+    }
+  }, true);
+
+  function scrollToCurrentHash() {
+    var rawHash = window.location.hash ? window.location.hash.substring(1) : '';
+    if (!rawHash) return;
+    try {
+      var target = document.getElementById(rawHash) || document.querySelector('[name="' + CSS.escape(rawHash) + '"]');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('hashchange', scrollToCurrentHash);
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(scrollToCurrentHash, 100);
+  } else {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(scrollToCurrentHash, 100);
+    });
+  }
 })();
 `;
 }

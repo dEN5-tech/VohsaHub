@@ -211,7 +211,7 @@ export function EditorPane({
       });
     });
 
-    // Register custom LinkProvider to enable "Follow link (Ctrl + click)" for virtual files
+    // Register custom LinkProvider to enable "Follow link (Ctrl + click)" for virtual files and anchor hashtag links
     const supportedLanguages = ['html', 'css', 'javascript', 'typescript', 'vue'];
     const linkProviderDisposables: monaco.IDisposable[] = [];
 
@@ -221,8 +221,8 @@ export function EditorPane({
           const links: monaco.languages.ILink[] = [];
           const lineCount = model.getLineCount();
 
-          // Regex matching relative src="...", href="...", url("..."), import '...'
-          const linkRegex = /(?:(?:src|href)\s*=\s*["']([^"']+)["'])|(?:url\(\s*["']?([^"')]+)["']?\s*\))|(?:(?:from|import)\s*["']([^"']+)["'])/g;
+          // Regex matching relative src="...", href="...", to="...", url("..."), import '...'
+          const linkRegex = /(?:(?:src|href|to)\s*=\s*(?:["']([^"']+)["']|\{\s*["'`]([^"'`]+)["'`]\s*\}))|(?:url\(\s*["']?([^"')]+)["']?\s*\))|(?:(?:from|import)\s*["']([^"']+)["'])/g;
 
           for (let lineNum = 1; lineNum <= lineCount; lineNum++) {
             const lineContent = model.getLineContent(lineNum);
@@ -230,21 +230,63 @@ export function EditorPane({
             linkRegex.lastIndex = 0;
 
             while ((match = linkRegex.exec(lineContent)) !== null) {
-              const rawTarget = match[1] || match[2] || match[3];
+              const rawTarget = match[1] || match[2] || match[3] || match[4];
               if (!rawTarget) continue;
 
-              // Ignore external URLs and data URIs
+              // Ignore external URLs, data URIs, javascript, mailto, tel
               if (
                 rawTarget.startsWith('http://') ||
                 rawTarget.startsWith('https://') ||
                 rawTarget.startsWith('//') ||
                 rawTarget.startsWith('data:') ||
-                rawTarget.startsWith('#')
+                rawTarget.startsWith('javascript:') ||
+                rawTarget.startsWith('mailto:') ||
+                rawTarget.startsWith('tel:')
               ) {
                 continue;
               }
 
-              // Check if file exists in our Virtual File System
+              // 1. In-file anchor hashtag link (e.g. href="#about", href="#contact", href="#")
+              if (rawTarget.startsWith('#')) {
+                const subIndex = match[0].indexOf(rawTarget);
+                const startCol = match.index + subIndex + 1;
+                const endCol = startCol + rawTarget.length;
+                const anchorName = rawTarget.slice(1);
+
+                links.push({
+                  range: new monaco.Range(lineNum, startCol, lineNum, endCol),
+                  url: `vfs-anchor://${rawTarget}`,
+                  tooltip: anchorName
+                    ? `Перейти к якорю #${anchorName} (Ctrl + клик)`
+                    : 'Перейти в начало файла (Ctrl + клик)',
+                });
+                continue;
+              }
+
+              // 2. Cross-file anchor link (e.g. href="index.html#features" or href="./about.html#team")
+              if (rawTarget.includes('#')) {
+                const hashIdx = rawTarget.indexOf('#');
+                const filePart = rawTarget.substring(0, hashIdx);
+                const anchorName = rawTarget.substring(hashIdx + 1);
+
+                const matchedVfsFile = findVirtualFile(filePart, filesRef.current);
+                if (matchedVfsFile) {
+                  const subIndex = match[0].indexOf(rawTarget);
+                  const startCol = match.index + subIndex + 1;
+                  const endCol = startCol + rawTarget.length;
+
+                  links.push({
+                    range: new monaco.Range(lineNum, startCol, lineNum, endCol),
+                    url: `vfs://${matchedVfsFile.name}#${anchorName}`,
+                    tooltip: anchorName
+                      ? `Перейти к ${matchedVfsFile.name} #${anchorName} (Ctrl + клик)`
+                      : `Перейти к файлу ${matchedVfsFile.name} (Ctrl + клик)`,
+                  });
+                }
+                continue;
+              }
+
+              // 3. Check if file exists in our Virtual File System
               const matchedVfsFile = findVirtualFile(rawTarget, filesRef.current);
               if (matchedVfsFile) {
                 const subIndex = match[0].indexOf(rawTarget);
@@ -266,7 +308,7 @@ export function EditorPane({
       linkProviderDisposables.push(disposable);
     });
 
-    // Intercept clicks on links with vfs:// protocol
+    // Intercept clicks on links with vfs:// protocol or anchor links
     const mouseDisposable = editor.onMouseDown((e) => {
       // Check if Ctrl / Cmd key is held and target has a link
       if ((e.event.ctrlKey || e.event.metaKey) && e.target?.position) {
@@ -275,21 +317,41 @@ export function EditorPane({
 
         const pos = e.target.position;
         const lineContent = model.getLineContent(pos.lineNumber);
-        const linkRegex = /(?:(?:src|href)\s*=\s*["']([^"']+)["'])|(?:url\(\s*["']?([^"')]+)["']?\s*\))|(?:(?:from|import)\s*["']([^"']+)["'])/g;
+        const linkRegex = /(?:(?:src|href|to)\s*=\s*(?:["']([^"']+)["']|\{\s*["'`]([^"'`]+)["'`]\s*\}))|(?:url\(\s*["']?([^"')]+)["']?\s*\))|(?:(?:from|import)\s*["']([^"']+)["'])/g;
 
         let match: RegExpExecArray | null;
         while ((match = linkRegex.exec(lineContent)) !== null) {
-          const rawTarget = match[1] || match[2] || match[3];
+          const rawTarget = match[1] || match[2] || match[3] || match[4];
           if (!rawTarget) continue;
           const subIndex = match[0].indexOf(rawTarget);
           const startCol = match.index + subIndex + 1;
           const endCol = startCol + rawTarget.length;
 
           if (pos.column >= startCol && pos.column <= endCol) {
+            e.event.preventDefault();
+            e.event.stopPropagation();
+
+            // 1. In-file anchor hashtag (e.g. #contact or #)
+            if (rawTarget.startsWith('#')) {
+              handleNavigateToText({ detail: { text: rawTarget } });
+              break;
+            }
+
+            // 2. Cross-file anchor (e.g. index.html#contact)
+            if (rawTarget.includes('#')) {
+              const hashIdx = rawTarget.indexOf('#');
+              const filePart = rawTarget.substring(0, hashIdx);
+              const anchorPart = rawTarget.substring(hashIdx);
+              const matchedVfsFile = findVirtualFile(filePart, filesRef.current);
+              if (matchedVfsFile) {
+                handleNavigateToText({ detail: { text: anchorPart, targetFile: matchedVfsFile.name } });
+              }
+              break;
+            }
+
+            // 3. Regular file link
             const matchedVfsFile = findVirtualFile(rawTarget, filesRef.current);
             if (matchedVfsFile) {
-              e.event.preventDefault();
-              e.event.stopPropagation();
               onSelectFileRef.current(matchedVfsFile.name);
               break;
             }
@@ -330,41 +392,86 @@ export function EditorPane({
         const currentModel = ed.getModel();
         if (!currentModel) return;
 
-        // 1. Try direct find
-        let matches = currentModel.findMatches(text, false, false, false, null, true);
+        const cleanText = text.trim();
+        if (!cleanText) return;
 
-        // 2. Fallback for HTML classes/IDs (e.g. .grid-container -> grid-container)
-        if ((!matches || matches.length === 0) && (text.startsWith('.') || text.startsWith('#'))) {
-          const rawName = text.replace(/^[.#]/, '');
-          matches = currentModel.findMatches(rawName, false, false, false, null, true);
+        // Jump to top of document for bare hash '#' or '#top'
+        if (cleanText === '#' || cleanText.toLowerCase() === '#top') {
+          ed.setPosition({ lineNumber: 1, column: 1 });
+          ed.revealLineInCenter(1, monaco.editor.ScrollType.Smooth);
+          ed.focus();
+          return;
         }
 
-        // 3. Fallback for compound selectors (e.g. .pricing-card.featured)
-        if ((!matches || matches.length === 0) && text.includes('.')) {
-          const parts = text.split('.').filter(Boolean);
-          for (const p of parts) {
-            matches = currentModel.findMatches('.' + p, false, false, false, null, true);
-            if (!matches || matches.length === 0) {
-              matches = currentModel.findMatches(p, false, false, false, null, true);
-            }
-            if (matches && matches.length > 0) break;
+        let matches: monaco.editor.FindMatch[] = [];
+
+        // Special high-precision handling for ID / anchor navigation (#section, #contact, etc.)
+        if (cleanText.startsWith('#')) {
+          const rawId = cleanText.slice(1).trim();
+
+          // 1. Try HTML / JSX exact attribute id="rawId", id='rawId', id={"rawId"}, id={`rawId`}
+          matches = currentModel.findMatches(`id="${rawId}"`, false, false, false, null, true);
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(`id='${rawId}'`, false, false, false, null, true);
           }
-        }
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(`id={"${rawId}"}`, false, false, false, null, true);
+          }
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(`id={\`${rawId}\`}`, false, false, false, null, true);
+          }
+          // 2. Try HTML classic anchor name attribute: name="rawId"
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(`name="${rawId}"`, false, false, false, null, true);
+          }
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(`name='${rawId}'`, false, false, false, null, true);
+          }
+          // 3. Try CSS ID selector `#rawId`
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(`#${rawId}`, false, false, false, null, true);
+          }
+          // 4. Fallback: match rawId directly
+          if (!matches || matches.length === 0) {
+            matches = currentModel.findMatches(rawId, false, false, false, null, true);
+          }
+        } else {
+          // 1. Try direct find
+          matches = currentModel.findMatches(cleanText, false, false, false, null, true);
 
-        // 4. Fallback for descendant / pseudo selectors (e.g. .modal::backdrop, .faq-item summary)
-        if (!matches || matches.length === 0) {
-          const firstWord = text.split(/[:s]+/)[0];
-          if (firstWord && firstWord !== text) {
-            matches = currentModel.findMatches(firstWord, false, false, false, null, true);
-            if ((!matches || matches.length === 0) && firstWord.startsWith('.')) {
-              matches = currentModel.findMatches(firstWord.slice(1), false, false, false, null, true);
+          // 2. Fallback for HTML classes (.grid-container -> grid-container)
+          if ((!matches || matches.length === 0) && cleanText.startsWith('.')) {
+            const rawName = cleanText.replace(/^\./, '');
+            matches = currentModel.findMatches(rawName, false, false, false, null, true);
+          }
+
+          // 3. Fallback for compound selectors (e.g. .pricing-card.featured)
+          if ((!matches || matches.length === 0) && cleanText.includes('.')) {
+            const parts = cleanText.split('.').filter(Boolean);
+            for (const p of parts) {
+              matches = currentModel.findMatches('.' + p, false, false, false, null, true);
+              if (!matches || matches.length === 0) {
+                matches = currentModel.findMatches(p, false, false, false, null, true);
+              }
+              if (matches && matches.length > 0) break;
             }
           }
-        }
 
-        // 5. Fallback for CSS custom properties (e.g. --primary-color -> :root)
-        if ((!matches || matches.length === 0) && text.startsWith('--')) {
-          matches = currentModel.findMatches(':root', false, false, false, null, true);
+          // 4. Fallback for descendant / pseudo selectors (e.g. .modal::backdrop, .faq-item summary)
+          if (!matches || matches.length === 0) {
+            const firstWord = cleanText.split(/[:\s]+/)[0];
+            if (firstWord && firstWord !== cleanText) {
+              matches = currentModel.findMatches(firstWord, false, false, false, null, true);
+              if ((!matches || matches.length === 0) && firstWord.startsWith('.')) {
+                matches = currentModel.findMatches(firstWord.slice(1), false, false, false, null, true);
+              }
+            }
+          }
+
+          // 5. Fallback for CSS custom properties (e.g. --primary-color -> :root)
+          if ((!matches || matches.length === 0) && cleanText.startsWith('--')) {
+            matches = currentModel.findMatches(':root', false, false, false, null, true);
+          }
         }
 
         // 6. Intelligent fallback when element is not yet created by student:
@@ -396,11 +503,20 @@ export function EditorPane({
         });
 
         if (nonCommentMatches.length > 0) {
-          const ruleMatch = nonCommentMatches.find((m) => {
-            const line = currentModel.getLineContent(m.range.startLineNumber).trim();
-            return line.includes('{') || line.startsWith(text);
-          });
-          bestMatch = ruleMatch || nonCommentMatches[0];
+          if (cleanText.startsWith('#')) {
+            // For anchor hashtag targets, prefer lines with id= or name= or CSS rule
+            const idMatch = nonCommentMatches.find((m) => {
+              const line = currentModel.getLineContent(m.range.startLineNumber);
+              return /id\s*=/i.test(line) || /name\s*=/i.test(line) || line.includes('{');
+            });
+            bestMatch = idMatch || nonCommentMatches[0];
+          } else {
+            const ruleMatch = nonCommentMatches.find((m) => {
+              const line = currentModel.getLineContent(m.range.startLineNumber).trim();
+              return line.includes('{') || line.startsWith(cleanText);
+            });
+            bestMatch = ruleMatch || nonCommentMatches[0];
+          }
         }
 
         // Set selection and smoothly center in view
@@ -440,6 +556,9 @@ export function EditorPane({
       requestAnimationFrame(() => {
         executeNavigation();
       });
+      setTimeout(() => {
+        executeNavigation();
+      }, 60);
     };
 
     window.addEventListener('vohsa:navigate-to-text', handleNavigateToText);

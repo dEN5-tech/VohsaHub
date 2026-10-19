@@ -74,6 +74,8 @@ export function App() {
       typeof window !== 'undefined' &&
       (window.location.hash.includes('project=') ||
         window.location.hash.includes('v2=') ||
+        window.location.hash.includes('p=') ||
+        window.location.search.includes('p=') ||
         window.location.href.includes('boost'))
     ) {
       return 'tasks';
@@ -89,12 +91,18 @@ export function App() {
   // При изменении списка задач или загрузке по URL синхронизируем активную задачу
   useEffect(() => {
     if (tasks.length > 0) {
-      if (!activeTaskId || !tasks.some((t) => t.id === activeTaskId)) {
-        setActiveTaskId(tasks[0].id);
+      let targetTaskId = activeTaskId;
+      if (!targetTaskId || !tasks.some((t) => t.id === targetTaskId)) {
+        targetTaskId = tasks[0].id;
+        setActiveTaskId(targetTaskId);
       }
-      // Если проект загружен по URL со ссылкой или открыт task.json, открываем валидацию
+      // Если проект загружен по URL со ссылкой или открыт task.json, открываем валидацию и активируем файл урока
       if (isLoadedFromUrl) {
         setActiveSidebarTab('tasks');
+        const currentTask = tasks.find((t) => t.id === targetTaskId) || tasks[0];
+        if (currentTask && currentTask.targetFile && files.some((f) => f.name === currentTask.targetFile)) {
+          setActiveFileName(currentTask.targetFile);
+        }
       }
     } else {
       setActiveTaskId('');

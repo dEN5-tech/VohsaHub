@@ -17,6 +17,7 @@
         "framer-motion": "^14.1.0",
         "lucide-preact": "^1.55.0",
         "monaco-editor": "^0.57.0",
+        "monaco-jsx-syntax-highlight": "^1.2.4",
         "parse5": "^8.0.1",
         "preact": "^11.0.1",
       },
@@ -482,6 +483,8 @@
     "mdn-data": ["mdn-data@2.27.1", "", {}, "sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ=="],
 
     "monaco-editor": ["monaco-editor@0.57.0", "", { "dependencies": { "dompurify": "3.4.15", "marked": "14.0.0" } }, "sha512-5BkI9KGoqrNvBGUe15/QlZq3OooZ8WLg1AxTpaqHRCP3HNpzPPZKE2EDz8M7c+VRmCeUw1Brp4cx/PWm3kI/5A=="],
+
+    "monaco-jsx-syntax-highlight": ["monaco-jsx-syntax-highlight@1.2.4", "", {}, "sha512-TC0DryupRLtoe646uke2ZukM4dq5fmXe0YPUE2cODnxpzsoUvk8j9aLEvlo6esX03Xewwc91IpIAK236LJ47DQ=="],
 
     "motion-dom": ["motion-dom@14.1.0", "", { "dependencies": { "motion-utils": "14.1.0" } }, "sha512-FyFLkNUAAETzCvf851mZcl+v+kaZrKq+UM+XmkY4G8n+ny/WYfiWh9j0fhSQ1KOKVQrM9/cLO11THO2k71HJlg=="],
 
