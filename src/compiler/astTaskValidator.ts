@@ -493,10 +493,12 @@ export function validateCssPropertyValue(
   // 4. Если заданы или выведены ожидаемые значения
   if (expectedOptions.length > 0) {
     const isMatched = expectedOptions.some((opt) => {
-      if (opt === normActual) return true;
-      if (normActual.startsWith(opt) || normActual.endsWith(opt)) return true;
-      if (normActual.includes(opt)) return true;
-      return false;
+      const cleanOpt = opt.replace(/\s+/g, " ").trim();
+      const cleanActual = normActual.replace(/\s+/g, " ").trim();
+      if (cleanOpt === cleanActual) return true;
+      const escapedOpt = cleanOpt.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const rx = new RegExp("(^|[\\s,(])" + escapedOpt + "([\\s,)>]|$)", "i");
+      return rx.test(cleanActual);
     });
 
     if (!isMatched) {
@@ -689,22 +691,8 @@ export function compileCriterionCheck(
               line: rules[0].loc?.start?.line,
             };
           }
-          if (criterion.cssValue) {
-            const decl = getCssProperty(ruleWithProp, propName);
-            const valStr = csstree.generate(decl.value).trim().toLowerCase();
-            if (!valStr.includes(criterion.cssValue.toLowerCase())) {
-              return {
-                passed: false,
-                message: criterion.message || `Значение "${criterion.cssValue}" не совпадает в "${criterion.cssSelector}"`,
-                line: decl.loc?.start?.line || ruleWithProp.loc?.start?.line,
-              };
-            }
-          }
-          return {
-            passed: true,
-            message: criterion.message || `CSS свойство "${criterion.cssProperty}" подтверждено в "${criterion.cssSelector}"`,
-            line: ruleWithProp.loc?.start?.line,
-          };
+          const decl = getCssProperty(ruleWithProp, propName);
+          return validateCssPropertyValue(decl, ruleWithProp, propName, criterion);
         }
         return {
           passed: true,
@@ -849,6 +837,8 @@ export function parseTasksFromVfs(files: VirtualFile[]): {
         cssSelector: c.cssSelector,
         cssProperty: c.cssProperty,
         cssValue: c.cssValue,
+        cssValues: Array.isArray(c.cssValues) ? c.cssValues : undefined,
+        cssValueRegex: typeof c.cssValueRegex === "string" ? c.cssValueRegex : undefined,
         variableDeclared: c.variableDeclared,
         expression: c.expression,
         message: c.message,
