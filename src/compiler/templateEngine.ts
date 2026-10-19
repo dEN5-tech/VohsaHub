@@ -77,6 +77,13 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
   // 1. Виртуальная файловая система
   window.__VFS__ = ${safeVfsJson};
 
+  function cleanVirtualPath(p) {
+    var s = p || '';
+    while (s.indexOf('./') === 0) s = s.substring(2);
+    while (s.indexOf('/') === 0) s = s.substring(1);
+    return s;
+  }
+
   // 2. Перехват fetch для относительных путей (эмуляция веб-сервера файловой системы)
   const originalFetch = window.fetch;
   window.fetch = function(input, init) {
@@ -195,7 +202,7 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
     e.stopPropagation();
 
     var hashIndex = href.indexOf('#');
-    var targetPath = hashIndex !== -1 ? href.substring(0, hashIndex).replace(/^(\.\/|\/)+/, '') : href.replace(/^(\.\/|\/)+/, '');
+    var targetPath = hashIndex !== -1 ? cleanVirtualPath(href.substring(0, hashIndex)) : cleanVirtualPath(href);
     var hash = hashIndex !== -1 ? href.substring(hashIndex + 1) : '';
 
     var currentPath = window.location.pathname.split('/').pop() || 'index.html';
@@ -288,7 +295,7 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
     }
 
     // 3. Ссылка на другой файл в виртуальной файловой системе VFS (например href="about.html")
-    var cleanVirtual = href.split('#')[0].replace(/^(\.\/|\/)+/, '').toLowerCase();
+    var cleanVirtual = cleanVirtualPath(href.split('#')[0]).toLowerCase();
     if (window.__VFS__ && (window.__VFS__[cleanVirtual] !== undefined || window.__VFS__[cleanVirtual.split('/').pop()] !== undefined)) {
       try {
         window.parent.postMessage({

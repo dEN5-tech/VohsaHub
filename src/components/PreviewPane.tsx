@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { RefreshCw, AlertTriangle, Check } from 'lucide-preact';
 import type { CompilationResult } from '../compiler/templateEngine';
 
