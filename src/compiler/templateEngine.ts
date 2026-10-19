@@ -177,6 +177,15 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
         e.preventDefault();
         e.stopPropagation();
 
+        // Уведомляем родительское окно о клике по якорю для переключения редактора на вкладку HTML
+        try {
+          window.parent.postMessage({
+            type: 'VOHSA_ANCHOR_CLICK',
+            hash: hash || '',
+            href: href
+          }, '*');
+        } catch (msgErr) {}
+
         if (!hash || hash === '') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
           try {

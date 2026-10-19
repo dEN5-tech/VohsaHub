@@ -333,7 +333,15 @@ export function EditorPane({
 
             // 1. In-file anchor hashtag (e.g. #contact or #)
             if (rawTarget.startsWith('#')) {
-              handleNavigateToText({ detail: { text: rawTarget } });
+              if (rawTarget === '#' || rawTarget.toLowerCase() === '#top') {
+                const htmlFile = filesRef.current.find((f) => f.name.toLowerCase() === 'index.html') ||
+                                 filesRef.current.find((f) => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.eta')) ||
+                                 filesRef.current.find((f) => /\.(jsx|tsx|vue)$/i.test(f.name)) ||
+                                 filesRef.current[0];
+                handleNavigateToText({ detail: { text: rawTarget, targetFile: htmlFile?.name } });
+              } else {
+                handleNavigateToText({ detail: { text: rawTarget } });
+              }
               break;
             }
 
@@ -395,11 +403,28 @@ export function EditorPane({
         const cleanText = text.trim();
         if (!cleanText) return;
 
-        // Jump to top of document for bare hash '#' or '#top'
+        // Jump to top of HTML content tab in editor for bare hash '#' or '#top'
         if (cleanText === '#' || cleanText.toLowerCase() === '#top') {
-          ed.setPosition({ lineNumber: 1, column: 1 });
-          ed.revealLineInCenter(1, monaco.editor.ScrollType.Smooth);
-          ed.focus();
+          const htmlFile = filesRef.current.find((f) => f.name.toLowerCase() === 'index.html') ||
+                           filesRef.current.find((f) => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.eta')) ||
+                           filesRef.current.find((f) => /\.(jsx|tsx|vue)$/i.test(f.name)) ||
+                           filesRef.current[0];
+          const destFileName = htmlFile?.name || 'index.html';
+
+          if (destFileName !== activeFileNameRef.current) {
+            const destModel = modelsMapRef.current.get(destFileName);
+            if (destModel && ed.getModel() !== destModel) {
+              ed.setModel(destModel);
+            }
+            onSelectFileRef.current(destFileName);
+          }
+
+          requestAnimationFrame(() => {
+            const currentEd = editorInstanceRef.current || ed;
+            currentEd.setPosition({ lineNumber: 1, column: 1 });
+            currentEd.revealLineInCenter(1, monaco.editor.ScrollType.Smooth);
+            currentEd.focus();
+          });
           return;
         }
 
@@ -408,6 +433,39 @@ export function EditorPane({
         // Special high-precision handling for ID / anchor navigation (#section, #contact, etc.)
         if (cleanText.startsWith('#')) {
           const rawId = cleanText.slice(1).trim();
+
+          // Check if current file has the ID element
+          let testMatches = currentModel.findMatches(`id="${rawId}"`, false, false, false, null, true);
+          if (!testMatches || testMatches.length === 0) {
+            testMatches = currentModel.findMatches(`id='${rawId}'`, false, false, false, null, true);
+          }
+          if (!testMatches || testMatches.length === 0) {
+            testMatches = currentModel.findMatches(`id={"${rawId}"}`, false, false, false, null, true);
+          }
+          if (!testMatches || testMatches.length === 0) {
+            testMatches = currentModel.findMatches(`id={\`${rawId}\`}`, false, false, false, null, true);
+          }
+
+          const currentExt = activeFileNameRef.current.split('.').pop()?.toLowerCase();
+          const isCurrentHtml = currentExt === 'html' || currentExt === 'eta' || currentExt === 'jsx' || currentExt === 'tsx' || currentExt === 'vue';
+
+          // If not found in current file and current file is not an HTML/markup file, switch to the HTML content tab!
+          if ((!testMatches || testMatches.length === 0) && !isCurrentHtml) {
+            const htmlFile = filesRef.current.find((f) => f.name.toLowerCase() === 'index.html') ||
+                             filesRef.current.find((f) => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.eta')) ||
+                             filesRef.current[0];
+            if (htmlFile && htmlFile.name !== activeFileNameRef.current) {
+              const htmlModel = modelsMapRef.current.get(htmlFile.name);
+              if (htmlModel && ed.getModel() !== htmlModel) {
+                ed.setModel(htmlModel);
+              }
+              onSelectFileRef.current(htmlFile.name);
+              setTimeout(() => {
+                executeNavigation();
+              }, 60);
+              return;
+            }
+          }
 
           // 1. Try HTML / JSX exact attribute id="rawId", id='rawId', id={"rawId"}, id={`rawId`}
           matches = currentModel.findMatches(`id="${rawId}"`, false, false, false, null, true);
@@ -561,11 +619,24 @@ export function EditorPane({
       }, 60);
     };
 
+    const handleAnchorMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'VOHSA_ANCHOR_CLICK') {
+        const rawHash = event.data.hash ? '#' + event.data.hash : '#';
+        const htmlFile = filesRef.current.find((f) => f.name.toLowerCase() === 'index.html') ||
+                         filesRef.current.find((f) => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.eta')) ||
+                         filesRef.current.find((f) => /\.(jsx|tsx|vue)$/i.test(f.name)) ||
+                         filesRef.current[0];
+        handleNavigateToText({ detail: { text: rawHash, targetFile: htmlFile?.name } });
+      }
+    };
+
     window.addEventListener('vohsa:navigate-to-text', handleNavigateToText);
+    window.addEventListener('message', handleAnchorMessage);
 
     return () => {
       if (navTimer) clearTimeout(navTimer);
       window.removeEventListener('vohsa:navigate-to-text', handleNavigateToText);
+      window.removeEventListener('message', handleAnchorMessage);
       resizeObserver.disconnect();
       changeDisposable.dispose();
       cursorDisposable.dispose();

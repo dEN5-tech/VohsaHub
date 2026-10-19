@@ -419,12 +419,26 @@ export function TaskPanel({
                   currentTask.description,
                   currentTask.targetFile,
                   (selector, file) => {
-                    if (onSelectFile && file) {
-                      onSelectFile(file);
+                    // Если выбран хэштег или HTML элемент, а файл задачи CSS/JSON — направляем на вкладку HTML контента
+                    const isHtmlTarget = selector === '#' ||
+                      selector.startsWith('#') ||
+                      selector.startsWith('<') ||
+                      /^(html|body|head|header|nav|main|section|article|aside|footer|dialog|details|summary|div|span|p|a|ul|ol|li|h[1-6]|form|input|button|textarea|select|option|label|progress)$/i.test(selector);
+
+                    const htmlFile = files.find((f) => f.name.toLowerCase() === 'index.html') ||
+                      files.find((f) => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.eta')) ||
+                      files.find((f) => /\.(jsx|tsx|vue)$/i.test(f.name));
+
+                    const destFile = (isHtmlTarget && htmlFile && (!file || file.endsWith('.css') || file.endsWith('.json')))
+                      ? htmlFile.name
+                      : file;
+
+                    if (onSelectFile && destFile) {
+                      onSelectFile(destFile);
                     }
                     window.dispatchEvent(
                       new CustomEvent('vohsa:navigate-to-text', {
-                        detail: { text: selector, targetFile: file },
+                        detail: { text: selector, targetFile: destFile },
                       })
                     );
                   }
