@@ -363,6 +363,19 @@ export function EditorPane({
               onSelectFileRef.current(matchedVfsFile.name);
               break;
             }
+
+            // 4. Missing '#' anchor fallback (e.g. href="smile" when <section id="smile"> exists)
+            if (!matchedVfsFile && rawTarget) {
+              const htmlFile = filesRef.current.find((f) => f.name.toLowerCase() === 'index.html') ||
+                               filesRef.current.find((f) => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.eta')) ||
+                               filesRef.current[0];
+              const targetModel = modelsMapRef.current.get(htmlFile?.name || '') || model;
+              const idMatches = targetModel.findMatches(`id="${rawTarget}"`, false, false, false, null, true);
+              if (idMatches && idMatches.length > 0) {
+                handleNavigateToText({ detail: { text: '#' + rawTarget, targetFile: htmlFile?.name } });
+                break;
+              }
+            }
           }
         }
       }

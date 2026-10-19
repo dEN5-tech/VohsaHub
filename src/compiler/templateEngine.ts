@@ -154,46 +154,61 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
     send('error', ['[Promise Rejection] ' + (event.reason ? (event.reason.message || event.reason) : 'Unknown')]);
   });
 
-  // 4. Перехват кликов по якорным ссылкам (Anchor Hashtag Linking)
+  // 4. Всеобъемлющий перехват кликов по ссылкам <a> в песочнице
   document.addEventListener('click', function(e) {
     var anchor = e.target && e.target.closest ? e.target.closest('a') : null;
     if (!anchor) return;
 
-    var href = anchor.getAttribute('href');
-    if (!href) return;
+    var rawHref = anchor.getAttribute('href');
+    // Если href отсутствует или пустой ("") - предотвращаем перезагрузку фрейма и прокручиваем наверх
+    if (rawHref === null || rawHref === undefined || rawHref.trim() === '') {
+      e.preventDefault();
+      e.stopPropagation();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      try {
+        window.parent.postMessage({
+          type: 'VOHSA_ANCHOR_CLICK',
+          hash: '',
+          href: ''
+        }, '*');
+      } catch (msgErr) {}
+      return;
+    }
 
+    var href = rawHref.trim();
+
+    // Служебные протоколы
     if (href.startsWith('javascript:')) return;
-    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+    if (href.startsWith('mailto:') || href.startsWith('tel:')) return;
+
+    // Внешние веб-ссылки (открываем в новой вкладке, чтобы не ломать песочницу)
+    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//')) {
+      e.preventDefault();
+      try {
+        window.open(href, '_blank', 'noopener,noreferrer');
+      } catch (openErr) {}
+      return;
+    }
+
+    // ЛЮБАЯ внутренняя ссылка или якорь перехватывается, чтобы исключить 404 перезагрузку iframe!
+    e.preventDefault();
+    e.stopPropagation();
 
     var hashIndex = href.indexOf('#');
-    if (hashIndex !== -1) {
-      var targetPath = href.substring(0, hashIndex).replace(/^(\.\/|\/)+/, '');
-      var hash = href.substring(hashIndex + 1);
+    var targetPath = hashIndex !== -1 ? href.substring(0, hashIndex).replace(/^(\.\/|\/)+/, '') : href.replace(/^(\.\/|\/)+/, '');
+    var hash = hashIndex !== -1 ? href.substring(hashIndex + 1) : '';
 
-      var currentPath = window.location.pathname.split('/').pop() || 'index.html';
-      var isCurrentPage = !targetPath || targetPath === '' || targetPath === 'index.html' || targetPath.toLowerCase() === currentPath.toLowerCase();
+    var currentPath = window.location.pathname.split('/').pop() || 'index.html';
+    var isCurrentDoc = !targetPath || targetPath === '' || targetPath === 'index.html' || targetPath.toLowerCase() === currentPath.toLowerCase();
 
-      if (isCurrentPage) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Уведомляем родительское окно о клике по якорю для переключения редактора на вкладку HTML
+    // 1. Полноценный якорный хэштег (#id, index.html#id или #)
+    if (hashIndex !== -1 && isCurrentDoc) {
+      if (!hash || hash === '') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         try {
-          window.parent.postMessage({
-            type: 'VOHSA_ANCHOR_CLICK',
-            hash: hash || '',
-            href: href
-          }, '*');
-        } catch (msgErr) {}
-
-        if (!hash || hash === '') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          try {
-            history.pushState(null, '', '#');
-          } catch (err) {}
-          return;
-        }
-
+          history.pushState(null, '', '#');
+        } catch (err) {}
+      } else {
         var targetEl = document.getElementById(hash);
         if (!targetEl) {
           try {
@@ -222,7 +237,71 @@ function createSandboxBootstrapScript(files: VirtualFile[]): string {
           console.warn('[VohsaHub] Элемент с якорем #' + hash + ' не найден на странице.');
         }
       }
+
+      try {
+        window.parent.postMessage({
+          type: 'VOHSA_ANCHOR_CLICK',
+          hash: hash || '',
+          href: href
+        }, '*');
+      } catch (msgErr) {}
+      return;
     }
+
+    // 2. Ссылка без решетки, но совпадающая с id элемента (например href="smile" для <section id="smile">)
+    // Студенты часто забывают символ '#' при создании якорных ссылок!
+    var directElem = document.getElementById(href);
+    if (!directElem) {
+      try {
+        directElem = document.querySelector('[name="' + CSS.escape(href) + '"]') ||
+                     document.querySelector('#' + CSS.escape(href));
+      } catch (e) {
+        directElem = null;
+      }
+    }
+
+    if (directElem) {
+      directElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      try {
+        history.pushState(null, '', '#' + href);
+      } catch (err) {}
+
+      var origOutline = directElem.style.outline;
+      var origTransition = directElem.style.transition;
+      directElem.style.transition = 'outline 0.25s ease-in-out';
+      directElem.style.outline = '2px solid rgba(56, 189, 248, 0.9)';
+      setTimeout(function() {
+        directElem.style.outline = origOutline;
+        directElem.style.transition = origTransition;
+      }, 1400);
+
+      console.warn('[VohsaHub] Переход к секции #' + href + '. Подсказка: для создания якорной ссылки добавьте символ "#": <a href="#' + href + '">');
+
+      try {
+        window.parent.postMessage({
+          type: 'VOHSA_ANCHOR_CLICK',
+          hash: href,
+          href: href
+        }, '*');
+      } catch (msgErr) {}
+      return;
+    }
+
+    // 3. Ссылка на другой файл в виртуальной файловой системе VFS (например href="about.html")
+    var cleanVirtual = href.split('#')[0].replace(/^(\.\/|\/)+/, '').toLowerCase();
+    if (window.__VFS__ && (window.__VFS__[cleanVirtual] !== undefined || window.__VFS__[cleanVirtual.split('/').pop()] !== undefined)) {
+      try {
+        window.parent.postMessage({
+          type: 'VOHSA_VFS_NAVIGATE',
+          file: cleanVirtual,
+          hash: hash || ''
+        }, '*');
+      } catch (msgErr) {}
+      return;
+    }
+
+    // 4. Если ссылка никуда не ведет - выводим подсказку и безопасно остаемся на месте
+    console.warn('[VohsaHub] Ссылка "' + href + '" не найдена. Если это якорь к секции, добавьте символ "#": <a href="#' + href + '">');
   }, true);
 
   function scrollToCurrentHash() {
